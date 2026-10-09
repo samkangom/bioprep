@@ -96,3 +96,10 @@ export const ErrorState = ({ message, onRetry, retryLabel = 'Try again' }) => (
     {onRetry && <button className="btn sm" onClick={onRetry}>{retryLabel}</button>}
   </div>
 )
+
+// Question diagram (public storage bucket). Alt text is required by the admin form so it is never missing.
+export const QuestionImage = ({ q, media }) => {
+  if (!q.imagePath) return null
+  const src = media.imageUrl(q.imagePath)
+  return src ? <img src={src} alt={q.imageAlt || 'Diagram for this question'} loading="lazy" style={{ maxWidth: '100%', maxHeight: 360, borderRadius: 10, border: '1px solid var(--line)', alignSelf: 'flex-start' }} /> : null
+}

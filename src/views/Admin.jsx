@@ -4,6 +4,7 @@ import { Bars, Icon, Modal, Loading, ErrorState, inr } from '../ui.jsx'
 import { sampleUsers, UNLOCK_PRICE } from '../data'
 import { describeError } from '../errors'
 import UploadField from './UploadField.jsx'
+import CsvImport from './CsvImport.jsx'
 import { StatusPill } from './Payments.jsx'
 
 const TABS = [
@@ -42,16 +43,25 @@ export default function Admin() {
 const Sample = () => <span className="pill">Sample data</span>
 
 function Dash({ go }) {
-  const { tests, questions, attempts, unlocked } = useApp()
+  const { adminApi, mock } = useApp()
+  const [o, setO] = useState(null)
+  const [err, setErr] = useState('')
+  const load = () => { setErr(''); adminApi.overview().then(setO).catch((e) => setErr(describeError(e, 'Could not load the overview.'))) }
+  useEffect(load, []) // eslint-disable-line
   return (
     <>
       <h1>Admin dashboard</h1>
-      <div className="grid c4">
-        <div className="card stat"><b className="num">{tests.length}</b><span className="muted small">Tests</span></div>
-        <div className="card stat"><b className="num">{questions.length}</b><span className="muted small">Questions</span></div>
-        <div className="card stat"><b className="num">{attempts.length}</b><span className="muted small">Attempts (this browser)</span></div>
-        <div className="card stat"><b className="num">{unlocked.length}</b><span className="muted small">Unlocks (this browser)</span></div>
-      </div>
+      {err && <ErrorState message={err} onRetry={load} />}
+      {!o && !err && <Loading />}
+      {o && (
+        <div className="grid c4">
+          <div className="card stat"><b className="num">{o.tests}</b><span className="muted small">Tests</span></div>
+          <div className="card stat"><b className="num">{o.questions}</b><span className="muted small">Questions ({o.publishedQuestions} published)</span></div>
+          <div className="card stat"><b className="num">{o.attempts}</b><span className="muted small">Submitted attempts{mock ? ' (this browser)' : ''}</span></div>
+          {o.students !== null && o.students !== undefined && <div className="card stat"><b className="num">{o.students}</b><span className="muted small">Students · {o.activeUnlocks} active unlocks</span></div>}
+          {mock && o.students === null && <div className="card stat"><b className="num">{o.activeUnlocks}</b><span className="muted small">Unlocks (this browser)</span></div>}
+        </div>
+      )}
       <div className="card stack">
         <h3>Quick actions</h3>
         <div className="row">
@@ -60,14 +70,6 @@ function Dash({ go }) {
           <button className="btn" onClick={() => go('analytics')}>See analytics</button>
         </div>
       </div>
-      <div className="card stack">
-        <div className="row between"><h3>Recent activity</h3><Sample /></div>
-        <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <li>Thoibi L. unlocked Biology Mock 1</li>
-          <li>Rahul K. finished Zoology Sprint</li>
-          <li>Memcha N. opened 4 explanations</li>
-        </ul>
-      </div>
     </>
   )
 }
@@ -75,6 +77,7 @@ function Dash({ go }) {
 function Questions() {
   const { questions, setToast, getQuestionForEdit } = useApp()
   const [edit, setEdit] = useState(null)
+  const [importing, setImporting] = useState(false)
   const [opening, setOpening] = useState('')
   const openEdit = async (q) => {
     setOpening(q.id)
@@ -88,7 +91,7 @@ function Questions() {
   return (
     <>
       <div className="row between"><h1>Question bank</h1>
-        <div className="row"><button className="btn" onClick={() => setToast('CSV import is planned. See CLAUDE.md for the column format.')}>Import CSV</button><button className="btn primary" onClick={() => setEdit('new')}><Icon n="plus" s={16} />Add question</button></div>
+        <div className="row"><button className="btn" onClick={() => setImporting(true)}>Import CSV</button><button className="btn primary" onClick={() => setEdit('new')}><Icon n="plus" s={16} />Add question</button></div>
       </div>
       <div className="card stack">
         <div className="row">
@@ -109,13 +112,14 @@ function Questions() {
         </table></div>
       </div>
       {edit && <QuestionForm initial={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
+      {importing && <CsvImport onClose={() => setImporting(false)} />}
     </>
   )
 }
 
 const blank = () => ({
   id: crypto.randomUUID(), subject: 'Botany', chapter: '', difficulty: 'Medium', text: '', options: ['', '', '', ''], correct: 0,
-  ncert: '', explanation: '', whyWrong: ['', '', '', ''], recap: { concept: '', mistake: '' }, caption: '', video: null, status: 'draft',
+  ncert: '', explanation: '', whyWrong: ['', '', '', ''], recap: { concept: '', mistake: '' }, caption: '', video: null, imagePath: null, imageAlt: '', status: 'draft',
   socratic: [{ ask: '', keys: [], hint: '', good: '', sample: '' }, { ask: '', keys: [], hint: '', good: '', sample: '' }],
 })
 
@@ -132,9 +136,13 @@ function QuestionForm({ initial, onClose }) {
   const fresh = useRef([])
   const originalVideo = useRef(initial?.video || null)
   const cleanup = async (keep) => { for (const p of fresh.current) if (p !== keep) await media.removeVideo(p).catch(() => {}) }
-  const close = async () => { await cleanup(originalVideo.current); onClose() }
+  const freshImg = useRef([])
+  const originalImage = useRef(initial?.imagePath || null)
+  const cleanupImg = async (keep) => { for (const p of freshImg.current) if (p !== keep) await media.removeImage(p).catch(() => {}) }
+  const close = async () => { await cleanup(originalVideo.current); await cleanupImg(originalImage.current); onClose() }
   const save = async (status) => {
     if (!q.text.trim() || q.options.some((o) => !o.trim())) return setErr('Add the question text and all four options.')
+    if (q.imagePath && !(q.imageAlt || '').trim()) return setErr('Describe the diagram in the alt text field, so students who cannot see it still get the question.')
     if (status === 'published' && q.socratic.some((s) => !s.ask.trim())) return setErr('Add the guiding questions before publishing.')
     const steps = q.socratic.filter((s) => s.ask.trim()).map((s) => ({
       ...s, keys: Array.isArray(s.keys) ? s.keys : String(s.keys).split(',').map((k) => k.trim()).filter(Boolean),
@@ -145,6 +153,8 @@ function QuestionForm({ initial, onClose }) {
       await upsertQuestion({ ...q, video: q.video || null, socratic: steps, status, explanation: q.explanation || (status === 'draft' ? '' : 'Explanation to be added.'), caption: q.caption || '', recap: { concept: q.recap?.concept || '', mistake: q.recap?.mistake || '' } })
       setToast(status === 'published' ? 'Question published.' : 'Draft saved.')
       await cleanup(q.video)
+      await cleanupImg(q.imagePath)
+      if (originalImage.current && originalImage.current !== q.imagePath) await media.removeImage(originalImage.current).catch(() => {})
       if (originalVideo.current && originalVideo.current !== q.video) await media.removeVideo(originalVideo.current).catch(() => {})
       onClose()
     } catch (e) {
@@ -163,6 +173,10 @@ function QuestionForm({ initial, onClose }) {
           <div className="field"><label htmlFor="f-df">Difficulty</label><select id="f-df" className="input" value={q.difficulty} onChange={(e) => set('difficulty', e.target.value)}><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
         </div>
         <div className="field"><label htmlFor="f-q">Question</label><textarea id="f-q" className="input" value={q.text} onChange={(e) => set('text', e.target.value)} /></div>
+        <div className="stack">
+          <UploadField kind="image" label="Diagram (optional)" value={q.imagePath} questionId={q.id} onChange={(v) => set('imagePath', v)} onUploaded={(p) => freshImg.current.push(p)} />
+          {q.imagePath && <div className="field"><label htmlFor="f-alt">Alt text for the diagram (required)</label><input id="f-alt" className="input" maxLength={300} value={q.imageAlt || ''} onChange={(e) => set('imageAlt', e.target.value)} placeholder="Describe what the diagram shows" /></div>}
+        </div>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} className="stack">
           <legend className="small" style={{ fontWeight: 600, marginBottom: 6 }}>Options. Select the correct one.</legend>
           {q.options.map((o, i) => (
@@ -280,49 +294,100 @@ function TestForm({ initial, onClose }) {
 }
 
 function Analytics() {
-  const { attempts, tests } = useApp()
-  const sampleAvg = [
-    { label: 'Biology Mock 1', value: 0.52, text: '21/40' },
-    { label: 'Botany Sprint', value: 0.6, text: '12/20' },
-    { label: 'Zoology Sprint', value: 0.44, text: '9/20' },
-  ]
-  const hard = [
-    { label: 'C4 primary CO2 acceptor', value: 0.31, color: 'var(--accent)' },
-    { label: 'Henle loop water permeability', value: 0.38, color: 'var(--accent)' },
-    { label: 'Ovulation trigger hormone', value: 0.42, color: 'var(--accent)' },
-  ]
+  const { adminApi, mock, user } = useApp()
+  const isAdmin = mock || user?.role === 'admin'
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState('')
+  const load = () => { setErr(''); adminApi.analytics({ revenue: isAdmin }).then(setD).catch((e) => setErr(describeError(e, 'Could not load analytics.'))) }
+  useEffect(load, []) // eslint-disable-line
+  if (err) return <><h1>Analytics</h1><ErrorState message={err} onRetry={load} /></>
+  if (!d) return <><h1>Analytics</h1><Loading label="Loading analytics…" /></>
+  const hardest = d.questions.filter((q) => q.pctCorrect !== null && q.answered >= (mock ? 1 : 3)).slice(0, 10)
+  const slowest = [...d.questions].sort((a, b) => b.avgSeconds - a.avgSeconds).slice(0, 10)
+  const fmtSec = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  const short = (t) => (t.length > 60 ? t.slice(0, 58) + '…' : t)
   return (
     <>
-      <div className="row between"><h1>Analytics</h1><Sample /></div>
+      <div className="row between"><h1>Analytics</h1><span className="pill">Based on {d.scope}</span></div>
       <div className="grid c2">
-        <section className="card stack"><h3>Average score by test</h3><Bars rows={sampleAvg} /></section>
-        <section className="card stack"><h3>Hardest questions (share correct)</h3><Bars rows={hard} /></section>
+        <section className="card stack">
+          <h3>Average score by test</h3>
+          {d.tests.length === 0 ? <p className="muted small">No submitted attempts yet.</p>
+            : <Bars rows={d.tests.map((t) => ({ label: t.title, value: Math.max(0, t.avgPct) / 100, text: `${t.avgScore}/${t.avgMax} · ${t.attempts} attempt${t.attempts === 1 ? '' : 's'}` }))} />}
+          <p className="small muted">Score out of the maximum for the test (+4 / -1 marking), averaged over submitted attempts. Negative averages show as 0%.</p>
+        </section>
+        <section className="card stack">
+          <h3>Hardest questions (share correct)</h3>
+          {hardest.length === 0 ? <p className="muted small">Shown once a question has at least {mock ? 1 : 3} answers.</p>
+            : <Bars rows={hardest.map((q) => ({ label: short(q.text), value: q.pctCorrect / 100, color: 'var(--accent)', text: `${Math.round(q.pctCorrect)}% · ${q.answered} answers` }))} />}
+        </section>
       </div>
       <section className="card stack">
-        <h3>Revenue from unlocks</h3>
-        <div className="grid c3">
-          <div className="stat"><b className="num">{inr(1400)}</b><span className="muted small">This month (sample)</span></div>
-          <div className="stat"><b className="num">14</b><span className="muted small">Unlocks (sample)</span></div>
-          <div className="stat"><b className="num">{attempts.length}</b><span className="muted small">Real attempts in this browser</span></div>
-        </div>
-        <p className="small muted">{tests.length} tests configured. Charts above are sample numbers until a backend records real attempts.</p>
+        <h3>Time per question</h3>
+        {slowest.length === 0 ? <p className="muted small">No data yet.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Question</th><th>Chapter</th><th>Average time</th><th>Shown</th><th>Skipped</th></tr></thead>
+            <tbody>{slowest.map((q) => <tr key={q.questionId}><td className="q">{short(q.text)}</td><td>{q.chapter}</td><td className="num">{fmtSec(q.avgSeconds)}</td><td className="num">{q.shown}</td><td className="num">{q.skipped}</td></tr>)}</tbody>
+          </table></div>
+        )}
       </section>
+      {d.revenue && (
+        <section className="card stack">
+          <h3>Revenue from unlocks</h3>
+          <div className="grid c4">
+            <div className="stat"><b className="num">{inr((d.revenue.grossPaise - d.revenue.refundedPaise) / 100)}</b><span className="muted small">Net (after refunds)</span></div>
+            <div className="stat"><b className="num">{d.revenue.paidCount}</b><span className="muted small">Paid unlocks</span></div>
+            <div className="stat"><b className="num">{inr(d.revenue.refundedPaise / 100)}</b><span className="muted small">Refunded</span></div>
+            <div className="stat"><b className="num">{d.revenue.refundFlagged}</b><span className="muted small">Flagged for refund</span></div>
+          </div>
+          {d.revenue.byMonth.length === 0 ? <p className="muted small">No payments yet.</p> : <Bars rows={d.revenue.byMonth.map((m) => ({ label: m.month, value: Math.min(1, m.netPaise / Math.max(...d.revenue.byMonth.map((x) => x.netPaise), 1)), text: `${inr(m.netPaise / 100)} · ${m.count}` }))} />}
+        </section>
+      )}
     </>
   )
 }
 
 function Users() {
-  const { setToast } = useApp()
+  const { adminApi, mock, user, tests, setToast } = useApp()
+  const [rows, setRows] = useState(undefined) // undefined = loading, null = demo sample
+  const [err, setErr] = useState('')
+  const [unlocking, setUnlocking] = useState(null)
+  const [testId, setTestId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const load = () => { setErr(''); adminApi.users().then(setRows).catch((e) => setErr(describeError(e, 'Could not load users.'))) }
+  useEffect(load, []) // eslint-disable-line
+  const act = async (fn, ok) => { setBusy(true); try { await fn(); setToast(ok); setUnlocking(null); load() } catch (e) { setToast(describeError(e, 'That did not work.')) } setBusy(false) }
+  if (err) return <><h1>Users and plans</h1><ErrorState message={err} onRetry={load} /></>
+  if (rows === undefined) return <><h1>Users and plans</h1><Loading /></>
+  const sample = rows === null
+  const list = sample ? sampleUsers.map((u) => ({ id: u.phone, name: u.name, phone: u.phone, role: 'student', unlocked_tests: u.unlocked, attempts: null })) : rows
   return (
     <>
-      <div className="row between"><h1>Users and plans</h1><Sample /></div>
+      <div className="row between"><h1>Users and plans</h1>{sample && <span className="pill">Sample data</span>}</div>
       <div className="card"><div className="table-wrap"><table>
-        <thead><tr><th>Student</th><th>Phone</th><th>Plan</th><th>Unlocked tests</th><th /></tr></thead>
-        <tbody>{sampleUsers.map((u) => (
-          <tr key={u.phone}><td>{u.name}</td><td className="num">{u.phone}</td><td><span className={'pill ' + (u.plan === 'Paid' ? 'primary' : '')}>{u.plan}</span></td><td className="num">{u.unlocked}</td>
-            <td><button className="btn sm" onClick={() => setToast(`Manual unlock queued for ${u.name} (demo).`)}>Manual unlock</button></td></tr>
+        <thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Unlocked tests</th><th>Attempts</th><th /></tr></thead>
+        <tbody>{list.map((u) => (
+          <tr key={u.id}>
+            <td>{u.name || <span className="muted">(no name)</span>}</td><td className="num">{u.phone}</td>
+            <td>{sample || u.id === user?.id ? <span className="pill">{u.role}</span> : (
+              <select className="input" style={{ minHeight: 36, width: 'auto' }} aria-label={`Role for ${u.name || u.phone}`} value={u.role} disabled={busy} onChange={(e) => act(() => adminApi.setRole(u.id, e.target.value), 'Role updated.')}>
+                <option value="student">student</option><option value="teacher">teacher</option><option value="admin">admin</option>
+              </select>)}</td>
+            <td className="num">{u.unlocked_tests}</td><td className="num">{u.attempts ?? '-'}</td>
+            <td><button className="btn sm" onClick={() => (sample ? setToast(`Manual unlock queued for ${u.name} (demo).`) : (setUnlocking(u), setTestId(tests[0]?.id || '')))}>Manual unlock</button></td>
+          </tr>
         ))}</tbody>
       </table></div></div>
+      {!sample && rows.length >= 500 && <p className="small muted">Showing the 500 most recent users.</p>}
+      {unlocking && (
+        <Modal title="Manual unlock" onClose={() => setUnlocking(null)}>
+          <div className="stack">
+            <p className="small">Give <b>{unlocking.name || unlocking.phone}</b> full solutions for one test without a payment (for support cases).</p>
+            <div className="field"><label htmlFor="mu-test">Test</label><select id="mu-test" className="input" value={testId} onChange={(e) => setTestId(e.target.value)}>{tests.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></div>
+            <div className="row"><button className="btn primary" disabled={busy || !testId} onClick={() => act(() => adminApi.grantUnlock(unlocking.id, testId), 'Test unlocked for the student.')}>{busy ? 'Saving…' : 'Unlock'}</button><button className="btn ghost" onClick={() => setUnlocking(null)}>Cancel</button></div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

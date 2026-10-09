@@ -7,7 +7,8 @@ const clone = (v) => structuredClone(v)
 let S = null
 
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null } }
-const stripBlob = (qs) => qs.map((q) => (q.video && q.video.startsWith('blob:') ? { ...q, video: null } : q))
+const isBlob = (v) => typeof v === 'string' && v.startsWith('blob:')
+const stripBlob = (qs) => qs.map((q) => ({ ...q, video: isBlob(q.video) ? null : q.video, imagePath: isBlob(q.imagePath) ? null : q.imagePath }))
 const state = () => {
   if (S) return S
   const s = read() || {}
@@ -136,7 +137,41 @@ export const media = {
 }
 
 // Admin helpers (demo): payments are the local demo payments; refund flags only change the flag.
+const money = (p) => p.status === 'paid' || p.status === 'refunded'
 export const admin = {
+  async overview() {
+    const s = state()
+    return { tests: s.tests.length, questions: s.questions.length, publishedQuestions: s.questions.filter((q) => q.status === 'published').length, attempts: s.attempts.length, students: null, activeUnlocks: s.unlocked.length }
+  },
+  // Real numbers computed from this browser's attempts and payments (not invented).
+  async analytics() {
+    const s = state()
+    const tests = s.tests.map((t) => {
+      const at = s.attempts.filter((a) => a.testId === t.id)
+      if (!at.length) return null
+      const avg = (f) => at.reduce((x, a) => x + f(a), 0) / at.length
+      return { testId: t.id, title: t.title, attempts: at.length, students: 1, avgScore: +avg((a) => a.score).toFixed(1), avgMax: avg((a) => a.max), avgPct: +(avg((a) => a.score / a.max) * 100).toFixed(1), avgMinutes: +(avg((a) => Object.values(a.times || {}).reduce((x, y) => x + y, 0)) / 60).toFixed(1) }
+    }).filter(Boolean)
+    const per = {}
+    for (const a of s.attempts) for (const [qid, r] of Object.entries(a.results || {})) {
+      const o = (per[qid] ||= { shown: 0, answered: 0, correct: 0, skipped: 0, secs: 0 })
+      o.shown++; o.secs += a.times?.[qid] || 0
+      if (r === 'skip') o.skipped++; else { o.answered++; if (r === 'right') o.correct++ }
+    }
+    const questions = Object.entries(per).map(([qid, o]) => {
+      const q = s.questions.find((x) => x.id === qid)
+      return q && { questionId: qid, text: q.text, subject: q.subject, chapter: q.chapter, shown: o.shown, answered: o.answered, correct: o.correct, skipped: o.skipped, pctCorrect: o.answered ? +((o.correct / o.answered) * 100).toFixed(1) : null, avgSeconds: Math.round(o.secs / o.shown) }
+    }).filter(Boolean).sort((a, b) => (a.pctCorrect ?? 101) - (b.pctCorrect ?? 101))
+    const paid = s.payments.filter(money)
+    const byMonth = {}
+    for (const p of paid) { const m = new Date(p.at).toISOString().slice(0, 7); const o = (byMonth[m] ||= { month: m, netPaise: 0, count: 0 }); o.count++; if (p.status === 'paid') o.netPaise += p.amountPaise }
+    return {
+      scope: 'this browser only', tests, questions,
+      revenue: { grossPaise: paid.reduce((x, p) => x + p.amountPaise, 0), refundedPaise: 0, paidCount: paid.length, refundFlagged: paid.filter((p) => p.refundFlag).length, manualUnlocks: 0, byMonth: Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)) },
+    }
+  },
+  async users() { return null }, // demo: the Users tab shows labelled sample rows
+  async grantUnlock() {}, async setRole() {},
   async listPayments() { return clone(state().payments).map((p) => ({ ...p, studentName: p.userName, studentPhone: '00xxxxxx00' })) },
   async flagRefund(id, flag, note) { const p = state().payments.find((x) => x.id === id); if (p) { p.refundFlag = flag; p.refundNote = flag ? note : ''; persist() } },
 }

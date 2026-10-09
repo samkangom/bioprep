@@ -48,7 +48,7 @@ const toTest = (t, qids) => ({
 })
 const toQuestion = (q, video) => ({
   id: q.id, subject: q.subject, chapter: q.chapter, difficulty: q.difficulty, text: q.text, options: q.options,
-  imagePath: q.image_path || null, status: q.status, video: video ?? null,
+  imagePath: q.image_path || null, imageAlt: q.image_alt || '', status: q.status, video: video ?? null,
 })
 const toAttempt = (a, rows) => {
   const answers = {}, times = {}, results = {}
@@ -73,7 +73,7 @@ async function questionsAndTests(isStaff) {
   const [tests, tq, qs, secrets] = await Promise.all([
     sb().from('tests').select('id,title,kind,duration_minutes,price_inr,published').order('created_at'),
     sb().from('test_questions').select('test_id,question_id,position').order('position'),
-    sb().from('questions').select('id,subject,chapter,difficulty,text,options,image_path,status').order('created_at'),
+    sb().from('questions').select('id,subject,chapter,difficulty,text,options,image_path,image_alt,status').order('created_at'),
     isStaff ? sb().from('question_secrets').select('question_id,video_path') : Promise.resolve({ data: [] }),
   ])
   const byTest = {}
@@ -126,7 +126,7 @@ export const data = {
     const payload = {
       id: q.id, subject: q.subject, chapter: q.chapter, difficulty: q.difficulty, text: q.text, options: q.options,
       correct: q.correct, explanation: q.explanation, whyWrong: q.whyWrong, recap: q.recap, ncert: q.ncert,
-      caption: q.caption, videoPath: [q.videoPath, q.video].find((v) => v && !String(v).startsWith('blob:')) ?? null, imagePath: q.imagePath ?? null, status: q.status,
+      caption: q.caption, videoPath: [q.videoPath, q.video].find((v) => v && !String(v).startsWith('blob:')) ?? null, imagePath: q.imagePath && !String(q.imagePath).startsWith('blob:') ? q.imagePath : null, imageAlt: q.imageAlt || '', status: q.status,
       socratic: q.socratic.map((s) => ({ ask: s.ask, keys: s.keys, hint: s.hint, good: s.good, sample: s.sample, choices: s.choices || [] })),
     }
     must(await sb().rpc('admin_upsert_question', { p: payload }))
@@ -192,4 +192,22 @@ export const admin = {
     }))
   },
   async flagRefund(id, flag, note) { must(await sb().rpc('admin_flag_refund', { p_payment: id, p_flag: flag, p_note: note || null })) },
+  async overview() {
+    const o = must(await sb().rpc('admin_overview'))
+    return { tests: o.tests, questions: o.questions, publishedQuestions: o.published_questions, attempts: o.attempts, students: o.students, activeUnlocks: o.active_unlocks }
+  },
+  async analytics({ revenue }) {
+    const [tests, questions, rev] = await Promise.all([
+      sb().rpc('admin_test_stats'), sb().rpc('admin_question_stats', { p_min: 1, p_limit: 200 }), revenue ? sb().rpc('admin_revenue') : Promise.resolve({ data: null }),
+    ])
+    return {
+      scope: 'all students',
+      tests: must(tests).map((t) => ({ testId: t.test_id, title: t.title, attempts: t.attempts, students: t.students, avgScore: Number(t.avg_score), avgMax: Number(t.avg_max), avgPct: Number(t.avg_pct), avgMinutes: Number(t.avg_minutes) })),
+      questions: must(questions).map((q) => ({ questionId: q.question_id, text: q.text, subject: q.subject, chapter: q.chapter, shown: q.shown, answered: q.answered, correct: q.correct, skipped: q.skipped, pctCorrect: q.pct_correct === null ? null : Number(q.pct_correct), avgSeconds: Number(q.avg_seconds) })),
+      revenue: rev.data ? { grossPaise: rev.data.gross_paise, refundedPaise: rev.data.refunded_paise, paidCount: rev.data.paid_count, refundFlagged: rev.data.refund_flagged, manualUnlocks: rev.data.manual_unlocks, byMonth: rev.data.by_month.map((m) => ({ month: m.month, netPaise: m.net_paise, count: m.count })) } : null,
+    }
+  },
+  async users() { return must(await sb().rpc('admin_users')) },
+  async grantUnlock(userId, testId) { must(await sb().rpc('admin_grant_unlock', { p_user: userId, p_test: testId })) },
+  async setRole(userId, role) { must(await sb().rpc('admin_set_role', { p_user: userId, p_role: role })) },
 }

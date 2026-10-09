@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
-import { Icon, Loading, ErrorState, fmt, inr } from '../ui.jsx'
+import { Icon, Loading, ErrorState, QuestionImage, fmt, inr } from '../ui.jsx'
 import { shuffle } from '../../shared/tutor-core.js'
 import { MAX_HINTS } from '../../shared/rules.js'
 import { apiDriver, mockDriver } from '../tutorDriver.js'
@@ -35,11 +35,13 @@ export default function Solution({ attemptId, qid }) {
 }
 
 function QuestionCard({ q, idx, mine, correct }) {
+  const { media } = useApp()
   const known = correct !== undefined
   return (
     <section className="card stack">
       <div className="row"><span className="pill">{q.subject}</span><span className="muted small">{q.chapter}</span></div>
       <p className="qtext">{idx + 1}. {q.text}</p>
+      <QuestionImage q={q} media={media} />
       <div className="opts" style={{ marginTop: 0 }}>
         {q.options.map((o, i) => {
           const right = known && i === correct, picked = i === mine

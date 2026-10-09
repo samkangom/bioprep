@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
-import { Icon, Modal, ErrorState, Loading, fmt } from '../ui.jsx'
+import { Icon, Modal, ErrorState, Loading, QuestionImage, fmt } from '../ui.jsx'
 import { describeError } from '../errors'
 import { MARKS } from '../data'
 
@@ -53,7 +53,7 @@ export function TestRun({ testId }) {
 }
 
 function Run({ test, attemptId }) {
-  const { questions, fast, submitAttempt } = useApp()
+  const { questions, fast, submitAttempt, media } = useApp()
   const testId = test.id
   const qs = test.qids.map((id) => questions.find((q) => q.id === id)).filter(Boolean)
   const [submitting, setSubmitting] = useState(false)
@@ -117,6 +117,7 @@ function Run({ test, attemptId }) {
           <section className="card stack" aria-live="polite">
             <div className="row"><span className="pill">{q.subject}</span><span className="muted small">{q.chapter}</span></div>
             <p className="qtext">{i + 1}. {q.text}</p>
+            <QuestionImage q={q} media={media} />
             <div className="opts" role="group" aria-label="Options">
               {q.options.map((o, idx) => (
                 <button key={idx} className="opt" aria-pressed={ans[q.id] === idx} onClick={() => pick(idx)}>

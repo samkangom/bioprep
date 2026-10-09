@@ -113,6 +113,17 @@ export function AppProvider({ children }) {
   const refreshCatalog = async () => patch(await backend.data.refreshCatalog(userRef.current))
   const upsertQuestion = async (q) => { await backend.data.upsertQuestion(q); await refreshCatalog() }
   const upsertTest = async (t) => { await backend.data.upsertTest(t); await refreshCatalog() }
+  // CSV import: one RPC per row so a bad row never blocks the rest. Everything arrives as a draft.
+  const importQuestions = async (qs, onProgress) => {
+    const failed = []
+    let done = 0
+    for (const q of qs) {
+      try { await backend.data.upsertQuestion(q) } catch (e) { failed.push({ q, error: describeError(e, 'Could not save.') }) }
+      onProgress?.(++done, qs.length)
+    }
+    await refreshCatalog()
+    return { imported: qs.length - failed.length, failed }
+  }
   const getQuestionForEdit = (id) => backend.data.getQuestionForEdit(id)
 
   const toggleRevision = async (qid) => {
@@ -132,7 +143,7 @@ export function AppProvider({ children }) {
     mock: USE_MOCK, media: backend.media, adminApi: backend.admin, boot, bootError, retryBoot: start,
     user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
     ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements, revealed, markRevealed,
-    startAttempt, submitAttempt, upsertQuestion, upsertTest, getQuestionForEdit, refreshCatalog, toggleRevision,
+    startAttempt, submitAttempt, upsertQuestion, upsertTest, importQuestions, getQuestionForEdit, refreshCatalog, toggleRevision,
     paywall, setPaywall, toast, setToast, sendOtp, verifyOtp, demoLogin, completeProfile, signOut, resetDemo,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
