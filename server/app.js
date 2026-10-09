@@ -3,6 +3,7 @@ import cors from 'cors'
 import { requireUser } from './auth.js'
 import { rateLimiter } from './ratelimit.js'
 import { HttpError, openSession, runTurn, finishSession, revealExplanation, wrapUp } from './tutor.js'
+import { videoUrl } from './video.js'
 import { TUTOR_DAILY_TURNS } from '../shared/rules.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -26,6 +27,8 @@ export function createApp(opts = {}) {
     db, verifyToken, opts,
     get claude() { return opts.claude || null },
     get limits() { return { dailyTurns: TUTOR_DAILY_TURNS, ...(opts.limits || {}) } },
+    get storage() { return opts.storage || null },
+    get videoTtl() { return opts.videoTtl || 600 },
   }
 
   app.use(cors({ origin: corsOrigins === true ? true : corsOrigins.length ? corsOrigins : false, exposedHeaders: ['X-Tutor-Mode'] }))
@@ -66,6 +69,12 @@ export function createApp(opts = {}) {
   app.get('/api/explain/:questionId', auth, limited, wrap(async (req, res) => {
     must(isUuid(req.params.questionId))
     res.json(await revealExplanation(db, req.user.id, req.params.questionId))
+  }))
+
+  // Short-lived signed video URL. Entitlement and tutor-session checks happen in video.js.
+  app.post('/api/video-url', auth, limited, wrap(async (req, res) => {
+    must(isUuid(req.body?.questionId))
+    res.set('Cache-Control', 'no-store').json(await videoUrl(ctx, req.user.id, req.body.questionId))
   }))
 
   extra?.routes?.(app, ctx, { auth, limited, wrap, must, isUuid })

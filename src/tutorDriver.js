@@ -24,7 +24,8 @@ export function apiDriver({ q, attemptId, onFreeUsed }) {
     finish: (reason) => api('/api/tutor/finish', { method: 'POST', body: { questionId: q.id, reason } }),
     reveal: () => api(`/api/explain/${q.id}`),
     wrapup: (messages) => api('/api/tutor/wrapup', { method: 'POST', body: { questionId: q.id, messages: wire(messages) } }),
-    videoUrl: async () => null, // signed URLs arrive with the video stage
+    // Short-lived signed URL from the API; it only answers once the tutor session has ended (or the test is paid).
+    videoUrl: async () => (await api('/api/video-url', { method: 'POST', body: { questionId: q.id } })).url,
   }
 }
 

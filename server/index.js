@@ -4,6 +4,7 @@ import { createApp } from './app.js'
 import { fromPool } from './db.js'
 import { supabaseVerifier } from './auth.js'
 import { createClaude } from './claude.js'
+import { supabaseStorage } from './storage.js'
 import { TUTOR_DAILY_TURNS } from '../shared/rules.js'
 
 const need = (k) => { if (!process.env[k]) { console.error(`Missing required env var ${k}. See .env.example.`); process.exit(1) } return process.env[k] }
@@ -20,6 +21,8 @@ if (!claude) console.warn('ANTHROPIC_API_KEY is not set: the tutor will use the 
 
 const app = createApp({
   db: fromPool(pool),
+  storage: supabaseStorage({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
+  videoTtl: Number(process.env.VIDEO_URL_TTL_SECONDS || 600),
   verifyToken: supabaseVerifier({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
   claude,
   limits: { dailyTurns: Number(process.env.TUTOR_DAILY_LIMIT || TUTOR_DAILY_TURNS) },

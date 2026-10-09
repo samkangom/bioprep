@@ -358,6 +358,19 @@ function Video({ q, driver, open, caption, canSkip, onSkip }) {
   const [err, setErr] = useState('')
   const ref = useRef(null)
   useEffect(() => { if (ref.current) ref.current.playbackRate = rate }, [rate, open, url])
+  // Signed URLs are short-lived. If playback fails mid-way (expired link), fetch a fresh one and resume.
+  const lastRetry = useRef(0)
+  const onVideoError = async () => {
+    if (Date.now() - lastRetry.current < 5000) return
+    lastRetry.current = Date.now()
+    const at = ref.current?.currentTime || 0
+    try {
+      const u = await driver.videoUrl()
+      if (!u) return
+      setUrl(u)
+      setTimeout(() => { if (ref.current) ref.current.currentTime = at }, 300)
+    } catch { setErr('The video link expired. Reload the page to keep watching.') }
+  }
   useEffect(() => {
     if (!open) return
     let off = false
@@ -379,7 +392,7 @@ function Video({ q, driver, open, caption, canSkip, onSkip }) {
         )}
       </div>
       <div className={'vid' + (open ? '' : ' locked')}>
-        {open && url ? <video ref={ref} src={url} controls playsInline aria-label="Explanation video" /> : (
+        {open && url ? <video ref={ref} src={url} controls playsInline aria-label="Explanation video" onError={onVideoError} /> : (
           <div className="vid-fake">
             <div className="stack" style={{ alignItems: 'center', gap: 8 }}>
               <Icon n="play" s={44} />

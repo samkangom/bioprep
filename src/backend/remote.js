@@ -2,6 +2,8 @@
 // Secrets (correct answers, explanations, Socratic prompts) are never selectable by students.
 import { getSupabase } from '../lib/supabase'
 import { AppError } from '../errors'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config'
+import { validateVideo, validateImage, xhrUpload } from '../media'
 
 const sb = () => getSupabase()
 const must = ({ data, error }) => {
@@ -134,3 +136,39 @@ export const data = {
 }
 
 data.refreshCatalog = (user) => questionsAndTests(user.role !== 'student')
+
+// ---- media (Supabase Storage). Videos: private bucket, staff only. Diagrams: public read, staff write. ----
+async function upload(bucket, file, path, { onProgress, signal }) {
+  const { data } = await sb().auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new AppError('not_authenticated')
+  await xhrUpload({
+    url: `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, body: file, onProgress, signal,
+    headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY, 'Content-Type': file.type || 'video/mp4', 'x-upsert': 'false', 'cache-control': 'max-age=3600' },
+  })
+}
+export const media = {
+  async uploadVideo(file, { questionId, onProgress, signal }) {
+    const bad = await validateVideo(file)
+    if (bad) throw new AppError('invalid_file', bad)
+    const path = `${questionId}/${crypto.randomUUID()}.mp4`
+    await upload('videos', new Blob([file], { type: 'video/mp4' }), path, { onProgress, signal })
+    return { path, previewUrl: await media.previewUrl(path) }
+  },
+  async uploadImage(file, { onProgress, signal }) {
+    const bad = await validateImage(file)
+    if (bad) throw new AppError('invalid_file', bad)
+    const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[file.type]
+    const path = `${crypto.randomUUID()}.${ext}`
+    await upload('diagrams', file, path, { onProgress, signal })
+    return { path, previewUrl: media.imageUrl(path) }
+  },
+  async previewUrl(path) {
+    const { data, error } = await sb().storage.from('videos').createSignedUrl(path, 600)
+    if (error) throw new AppError('storage_error', error.message)
+    return data.signedUrl
+  },
+  imageUrl: (path) => (path ? sb().storage.from('diagrams').getPublicUrl(path).data.publicUrl : null),
+  async removeVideo(path) { if (path) await sb().storage.from('videos').remove([path]) },
+  async removeImage(path) { if (path) await sb().storage.from('diagrams').remove([path]) },
+}

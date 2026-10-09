@@ -129,7 +129,7 @@ export function AppProvider({ children }) {
   }
 
   const value = {
-    mock: USE_MOCK, boot, bootError, retryBoot: start,
+    mock: USE_MOCK, media: backend.media, boot, bootError, retryBoot: start,
     user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
     ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements, revealed, markRevealed,
     startAttempt, submitAttempt, upsertQuestion, upsertTest, getQuestionForEdit, refreshCatalog, toggleRevision,

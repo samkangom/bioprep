@@ -108,3 +108,21 @@ export const data = {
 }
 
 data.refreshCatalog = async () => { const s = snapshot(); return { questions: s.questions, tests: s.tests } }
+
+// Demo media: files live only as object URLs for this browser session; progress is simulated.
+const fakeProgress = (onProgress, signal) => new Promise((resolve, reject) => {
+  let p = 0
+  const id = setInterval(() => {
+    if (signal?.aborted) { clearInterval(id); return reject(Object.assign(new Error('Upload cancelled'), { name: 'AbortError' })) }
+    p += 20; onProgress?.(Math.min(100, p))
+    if (p >= 100) { clearInterval(id); resolve() }
+  }, 150)
+})
+export const media = {
+  async uploadVideo(file, { onProgress, signal }) { await fakeProgress(onProgress, signal); const url = URL.createObjectURL(file); return { path: url, previewUrl: url } },
+  async uploadImage(file, { onProgress, signal }) { await fakeProgress(onProgress, signal); const url = URL.createObjectURL(file); return { path: url, previewUrl: url } },
+  async previewUrl(path) { return path },
+  imageUrl: (path) => path,
+  async removeVideo() {},
+  async removeImage() {},
+}

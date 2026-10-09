@@ -195,15 +195,16 @@ export function createSupabaseShim({ db, jwtSecret, otp = '123456', anonKey }) {
     const url = new URL(req.url, 'http://localhost')
     try {
       let body
-      if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
         const raw = await new Promise((resolve, reject) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => resolve(Buffer.concat(c))); req.on('error', reject) })
         if (url.pathname.startsWith('/storage/')) body = raw
         else if (raw.length) body = JSON.parse(raw.toString())
+        if (url.pathname.startsWith('/storage/')) body = raw
       }
       let out
       if (url.pathname.startsWith('/auth/v1/')) out = await auth(req, url, body)
       else if (url.pathname.startsWith('/rest/v1/')) out = await rest(req, url, body)
-      else if (extra) out = await extra(req, url, body, { claimsOf })
+      else if (extra) out = await extra(req, url, body ?? Buffer.alloc(0), { claimsOf })
       else throw httpErr(404, 'not found')
       if (!out) throw httpErr(404, 'not found')
       res.statusCode = out.status || 200

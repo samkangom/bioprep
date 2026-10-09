@@ -276,3 +276,25 @@ describe('entitlement rules below the API', () => {
     expect(e).toMatchObject({ free_limit: 2, free_used: 1, unlocked_tests: [bot.tid] })
   })
 })
+
+describe('storage policies', () => {
+  const put = (uid, bucket, name) => as(uid)((tx) => tx.query('insert into storage.objects (bucket_id, name) values ($1, $2)', [bucket, name]))
+  it('buckets have the documented limits and privacy', async () => {
+    const { rows } = await db.query(`select id, public, file_size_limit::bigint::text lim, allowed_mime_types from storage.buckets order by id`)
+    expect(rows).toEqual([
+      { id: 'diagrams', public: true, lim: '5242880', allowed_mime_types: ['image/png', 'image/jpeg', 'image/webp'] },
+      { id: 'videos', public: false, lim: String(200 * 1024 * 1024), allowed_mime_types: ['video/mp4'] },
+    ])
+  })
+  it('only staff can write to either bucket; students cannot even list the private one', async () => {
+    await put(teacher, 'videos', 'q/a.mp4')
+    await put(admin, 'diagrams', 'd.png')
+    await rejects(put(student, 'videos', 'q/evil.mp4'), /row-level security/)
+    await rejects(put(student, 'diagrams', 'evil.png'), /row-level security/)
+    expect(await as(student)((tx) => q(tx, `select name from storage.objects where bucket_id = 'videos'`))).toHaveLength(0)
+    expect(await as(null)((tx) => q(tx, `select name from storage.objects where bucket_id = 'videos'`))).toHaveLength(0)
+    expect(await as(teacher)((tx) => q(tx, `select name from storage.objects where bucket_id = 'videos'`))).toHaveLength(1)
+    expect((await as(student)((tx) => q(tx, `select name from storage.objects where bucket_id = 'diagrams'`))).length).toBe(1)
+    expect((await as(student)((tx) => tx.query(`delete from storage.objects where bucket_id = 'videos'`))).affectedRows).toBe(0)
+  })
+})

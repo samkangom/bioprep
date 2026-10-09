@@ -3,6 +3,7 @@ import { useApp } from '../store.jsx'
 import { Bars, Icon, Modal, inr } from '../ui.jsx'
 import { sampleUsers, UNLOCK_PRICE } from '../data'
 import { describeError } from '../errors'
+import UploadField from './UploadField.jsx'
 
 const TABS = [
   ['dash', 'Dashboard', 'grid'],
@@ -115,20 +116,17 @@ const blank = () => ({
 function QuestionForm({ initial, onClose }) {
   const { upsertQuestion, setToast } = useApp()
   const [q, setQ] = useState(() => structuredClone(initial || blank()))
-  const [prog, setProg] = useState(initial?.video ? 100 : 0)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setQ((x) => ({ ...x, [k]: v }))
   const setOpt = (i, v) => set('options', q.options.map((o, n) => (n === i ? v : o)))
   const setStep = (i, k, v) => set('socratic', q.socratic.map((s, n) => (n === i ? { ...s, [k]: v } : s)))
-  const file = useRef(null)
-
-  const upload = (f) => {
-    if (!f) return
-    set('video', URL.createObjectURL(f)); setProg(0)
-    let p = 0
-    const id = setInterval(() => { p += 20; setProg(Math.min(100, p)); if (p >= 100) clearInterval(id) }, 150)
-  }
+  const { media } = useApp()
+  // Uploads made in this editing session. Anything not saved as the final value is deleted so storage stays clean.
+  const fresh = useRef([])
+  const originalVideo = useRef(initial?.video || null)
+  const cleanup = async (keep) => { for (const p of fresh.current) if (p !== keep) await media.removeVideo(p).catch(() => {}) }
+  const close = async () => { await cleanup(originalVideo.current); onClose() }
   const save = async (status) => {
     if (!q.text.trim() || q.options.some((o) => !o.trim())) return setErr('Add the question text and all four options.')
     if (status === 'published' && q.socratic.some((s) => !s.ask.trim())) return setErr('Add the guiding questions before publishing.')
@@ -138,8 +136,10 @@ function QuestionForm({ initial, onClose }) {
     }))
     setBusy(true); setErr('')
     try {
-      await upsertQuestion({ ...q, socratic: steps, status, explanation: q.explanation || (status === 'draft' ? '' : 'Explanation to be added.'), caption: q.caption || '', recap: { concept: q.recap?.concept || '', mistake: q.recap?.mistake || '' } })
+      await upsertQuestion({ ...q, video: q.video || null, socratic: steps, status, explanation: q.explanation || (status === 'draft' ? '' : 'Explanation to be added.'), caption: q.caption || '', recap: { concept: q.recap?.concept || '', mistake: q.recap?.mistake || '' } })
       setToast(status === 'published' ? 'Question published.' : 'Draft saved.')
+      await cleanup(q.video)
+      if (originalVideo.current && originalVideo.current !== q.video) await media.removeVideo(originalVideo.current).catch(() => {})
       onClose()
     } catch (e) {
       setErr(describeError(e, 'Could not save the question.'))
@@ -149,7 +149,7 @@ function QuestionForm({ initial, onClose }) {
   const keysText = (s) => (Array.isArray(s.keys) ? s.keys.join(', ') : s.keys)
 
   return (
-    <Modal wide title={initial ? 'Edit question' : 'Add question'} onClose={onClose}>
+    <Modal wide title={initial ? 'Edit question' : 'Add question'} onClose={close}>
       <div className="stack">
         <div className="grid c3">
           <div className="field"><label htmlFor="f-sub">Subject</label><select id="f-sub" className="input" value={q.subject} onChange={(e) => set('subject', e.target.value)}><option>Botany</option><option>Zoology</option></select></div>
@@ -188,15 +188,12 @@ function QuestionForm({ initial, onClose }) {
 
         <div className="stack">
           <h3>Video explanation (MP4)</h3>
-          <input ref={file} type="file" accept="video/mp4,video/*" hidden id="f-vid" onChange={(e) => upload(e.target.files[0])} />
-          <div className="row"><button className="btn" onClick={() => file.current.click()}><Icon n="upload" s={16} />{q.video ? 'Replace MP4' : 'Upload MP4'}</button>{q.video && <span className="small muted">Preview is kept for this session only.</span>}</div>
-          {q.video && <div className="progress" role="progressbar" aria-valuenow={prog} aria-valuemin={0} aria-valuemax={100}><i style={{ width: prog + '%' }} /></div>}
-          {q.video && <video src={q.video} controls style={{ width: '100%', maxWidth: 420, borderRadius: 10 }} />}
+          <UploadField kind="video" label="Video file" value={q.video} questionId={q.id} onChange={(v) => set('video', v)} onUploaded={(p) => fresh.current.push(p)} />
           <div className="field"><label htmlFor="f-cap">Caption text</label><input id="f-cap" className="input" value={q.caption} onChange={(e) => set('caption', e.target.value)} /></div>
         </div>
 
         {err && <p role="alert" style={{ color: 'var(--bad)' }}>{err}</p>}
-        <div className="row"><button className="btn primary" disabled={busy} onClick={() => save('published')}>{busy ? 'Saving…' : 'Publish'}</button><button className="btn" disabled={busy} onClick={() => save('draft')}>Save draft</button><button className="btn ghost" disabled={busy} onClick={onClose}>Cancel</button></div>
+        <div className="row"><button className="btn primary" disabled={busy} onClick={() => save('published')}>{busy ? 'Saving…' : 'Publish'}</button><button className="btn" disabled={busy} onClick={() => save('draft')}>Save draft</button><button className="btn ghost" disabled={busy} onClick={close}>Cancel</button></div>
       </div>
     </Modal>
   )

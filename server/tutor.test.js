@@ -225,3 +225,55 @@ describe('free plan and paywall', () => {
     expect((await q('select count(*)::int n from public.free_explanation_uses where user_id = $1', [s.id]))[0].n).toBe(2)
   })
 })
+
+describe('video URLs', () => {
+  const signed = []
+  let videoApp
+  beforeAll(async () => {
+    const { createApp: mk } = await import('./app.js')
+    const storage = { signedUrl: async (bucket, path, s) => { signed.push({ bucket, path, s }); return `https://storage.test/${bucket}/${path}?token=abc&ttl=${s}` } }
+    const a = mk({ db: fromPglite(pg), verifyToken: async (t) => ({ id: t }), storage, videoTtl: 300 })
+    await new Promise((r) => { videoApp = a.listen(0, '127.0.0.1', r) })
+  })
+  afterAll(async () => { await new Promise((r) => videoApp.close(r)) })
+  const vcall = async (token, body) => {
+    const res = await fetch(`http://127.0.0.1:${videoApp.address().port}/api/video-url`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) })
+    return { status: res.status, json: await res.json(), cache: res.headers.get('cache-control') }
+  }
+
+  it('is denied before the session ends for a free student, then signed once finished', async () => {
+    const Q = await qid('reaction centre chlorophyll')
+    await q(`update public.question_secrets set video_path = 'q1/test.mp4' where question_id = $1`, [Q])
+    const s = await student()
+    expect((await vcall(s.token, { questionId: Q })).status).toBe(403) // no session at all
+    await call(s.token, 'POST', '/api/explain/open', { attemptId: s.attempt, questionId: Q })
+    expect((await vcall(s.token, { questionId: Q })).status).toBe(403) // mid-session
+    await call(s.token, 'POST', '/api/tutor/finish', { questionId: Q, reason: 'skip' })
+    const ok = await vcall(s.token, { questionId: Q })
+    expect(ok.status).toBe(200)
+    expect(ok.json).toMatchObject({ url: 'https://storage.test/videos/q1/test.mp4?token=abc&ttl=300', expiresIn: 300 })
+    expect(ok.cache).toBe('no-store')
+    expect(signed.at(-1)).toEqual({ bucket: 'videos', path: 'q1/test.mp4', s: 300 })
+  })
+
+  it('lets a paid student skip to the video mid-session, but not after the unlock is revoked', async () => {
+    const Q = await qid('primary acceptor of CO2')
+    await q(`update public.question_secrets set video_path = 'q2/test.mp4' where question_id = $1`, [Q])
+    const s = await student()
+    await q('insert into public.unlocks (user_id, test_id) values ($1, $2)', [s.id, s.test])
+    await call(s.token, 'POST', '/api/explain/open', { attemptId: s.attempt, questionId: Q })
+    expect((await vcall(s.token, { questionId: Q })).status).toBe(200)
+    await q('update public.unlocks set revoked_at = now() where user_id = $1', [s.id])
+    expect((await vcall(s.token, { questionId: Q })).status).toBe(403)
+  })
+
+  it("never serves another student's session, and returns null when the question has no video", async () => {
+    const Q = await qid('DNA replication')
+    const a = await student(), b = await student()
+    await call(a.token, 'POST', '/api/explain/open', { attemptId: a.attempt, questionId: Q })
+    await call(a.token, 'POST', '/api/tutor/finish', { questionId: Q, reason: 'skip' })
+    expect((await vcall(a.token, { questionId: Q })).json).toEqual({ url: null })
+    expect((await vcall(b.token, { questionId: Q })).status).toBe(403)
+    expect((await vcall(a.token, { questionId: 'bad' })).status).toBe(400)
+  })
+})
