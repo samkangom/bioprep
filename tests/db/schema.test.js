@@ -181,3 +181,98 @@ describe('free explanations', () => {
     expect(await as(s3)((tx) => q(tx, 'select * from public.free_explanation_uses'))).toHaveLength(2)
   })
 })
+
+describe('entitlement rules below the API', () => {
+  const explain = (uid, att, qid) => db.query('select private.open_explanation($1, $2, $3) r', [uid, att, qid]).then((r) => r.rows[0].r)
+  async function submitted(uid, title) {
+    const tid = (await db.query('select id from public.tests where title = $1', [title])).rows[0].id
+    const att = (await as(uid)((tx) => q(tx, 'select public.start_attempt($1) id', [tid])))[0].id
+    await as(uid)((tx) => tx.query(`select public.submit_attempt($1, '{}', '{}')`, [att]))
+    const qids = (await db.query('select question_id from public.test_questions where test_id = $1 order by position', [tid])).rows.map((r) => r.question_id)
+    return { tid, att, qids }
+  }
+
+  it('gives two free explanations in total across tests, then refuses', async () => {
+    const u = await addUser(db, '919800010001')
+    const bot = await submitted(u, 'Botany Sprint')
+    const zoo = await submitted(u, 'Zoology Sprint')
+    expect((await explain(u, bot.att, bot.qids[0])).access).toBe('free')
+    expect((await explain(u, zoo.att, zoo.qids[0])).free_left).toBe(0)
+    await rejects(explain(u, bot.att, bot.qids[1]), /paywall/)
+    // already-spent questions stay open
+    expect((await explain(u, bot.att, bot.qids[0])).access).toBe('free')
+    expect((await db.query('select count(*)::int n from public.free_explanation_uses where user_id = $1', [u])).rows[0].n).toBe(2)
+  })
+
+  it('an unlock covers every question of that test only', async () => {
+    const u = await addUser(db, '919800010002')
+    const bot = await submitted(u, 'Botany Sprint')
+    const zoo = await submitted(u, 'Zoology Sprint')
+    await db.query('insert into public.unlocks (user_id, test_id) values ($1, $2)', [u, bot.tid])
+    for (const qid of bot.qids) expect((await explain(u, bot.att, qid)).access).toBe('paid')
+    expect((await db.query('select count(*)::int n from public.free_explanation_uses where user_id = $1', [u])).rows[0].n).toBe(0)
+    // Zoology is not unlocked: free slots apply
+    expect((await explain(u, zoo.att, zoo.qids[0])).access).toBe('free')
+    expect((await explain(u, zoo.att, zoo.qids[1])).access).toBe('free')
+    await rejects(explain(u, zoo.att, zoo.qids[2]), /paywall/)
+  })
+
+  it('a revoked unlock stops paid access', async () => {
+    const u = await addUser(db, '919800010003')
+    const bot = await submitted(u, 'Botany Sprint')
+    await db.query('insert into public.unlocks (user_id, test_id) values ($1, $2)', [u, bot.tid])
+    expect((await explain(u, bot.att, bot.qids[0])).access).toBe('paid')
+    await db.query('update public.unlocks set revoked_at = now() where user_id = $1', [u])
+    expect((await db.query('select private.has_paid_access($1, $2) b', [u, bot.qids[0]])).rows[0].b).toBe(false)
+  })
+
+  it('needs a submitted attempt of the same user that contained the question', async () => {
+    const u = await addUser(db, '919800010004')
+    const v = await addUser(db, '919800010005')
+    const bot = await submitted(u, 'Botany Sprint')
+    const zoo = await submitted(u, 'Zoology Sprint')
+    await rejects(explain(v, bot.att, bot.qids[0]), /attempt_not_found/)
+    await rejects(explain(u, bot.att, zoo.qids[0]), /question_not_in_attempt/)
+    const tid = bot.tid
+    const open = (await as(u)((tx) => q(tx, 'select public.start_attempt($1) id', [tid])))[0].id // never submitted
+    await rejects(explain(u, open, bot.qids[0]), /attempt_not_found/)
+  })
+
+  it('concurrent opens cannot exceed the free limit', async () => {
+    const u = await addUser(db, '919800010006')
+    const bot = await submitted(u, 'Botany Sprint')
+    const results = await Promise.allSettled(bot.qids.map((qid) => explain(u, bot.att, qid)))
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(2)
+    expect((await db.query('select count(*)::int n from public.free_explanation_uses where user_id = $1', [u])).rows[0].n).toBe(2)
+  })
+
+  it('staff preview explanations without spending free slots', async () => {
+    const bot = await submitted(teacher, 'Botany Sprint')
+    for (const qid of bot.qids) expect((await explain(teacher, bot.att, qid)).access).toBe('staff')
+    expect((await db.query('select count(*)::int n from public.free_explanation_uses where user_id = $1', [teacher])).rows[0].n).toBe(0)
+  })
+
+  it('clients cannot write entitlement or session tables, and cannot read other users', async () => {
+    const u = await addUser(db, '919800010007')
+    const other = await addUser(db, '919800010008')
+    const bot = await submitted(other, 'Botany Sprint')
+    await explain(other, bot.att, bot.qids[0])
+    await rejects(as(u)((tx) => tx.query('update public.free_explanation_uses set user_id = $1', [u])), /permission denied/)
+    await rejects(as(u)((tx) => tx.query('delete from public.free_explanation_uses')), /permission denied/)
+    await rejects(as(u)((tx) => tx.query('insert into public.tutor_sessions (user_id, question_id, test_id, access) values ($1, $2, $3, $4)', [u, bot.qids[0], bot.tid, 'paid'])), /permission denied/)
+    await rejects(as(u)((tx) => tx.query('update public.tutor_sessions set status = $1', ['finished'])), /permission denied/)
+    await rejects(as(u)((tx) => tx.query('select private.open_explanation($1, $2, $3)', [u, bot.att, bot.qids[0]])), /permission denied/)
+    expect(await as(u)((tx) => q(tx, 'select * from public.tutor_sessions'))).toHaveLength(0)
+    expect(await as(u)((tx) => q(tx, 'select * from public.free_explanation_uses'))).toHaveLength(0)
+    expect(await as(u)((tx) => q(tx, 'select * from public.ai_usage'))).toHaveLength(0)
+  })
+
+  it('my_entitlements reports only your own state', async () => {
+    const u = await addUser(db, '919800010009')
+    const bot = await submitted(u, 'Botany Sprint')
+    await explain(u, bot.att, bot.qids[0])
+    await db.query('insert into public.unlocks (user_id, test_id) values ($1, $2)', [u, bot.tid])
+    const e = (await as(u)((tx) => q(tx, 'select public.my_entitlements() e')))[0].e
+    expect(e).toMatchObject({ free_limit: 2, free_used: 1, unlocked_tests: [bot.tid] })
+  })
+})
