@@ -9,7 +9,7 @@ export const useApp = () => useContext(Ctx)
 
 const THEME_KEY = 'bioprep-theme'
 const readTheme = () => { try { return localStorage.getItem(THEME_KEY) || legacyTheme() } catch { return null } }
-const EMPTY = { questions: [], tests: [], attempts: [], unlocked: [], freeUsed: [], revision: [] }
+const EMPTY = { questions: [], tests: [], attempts: [], unlocked: [], freeUsed: [], revision: [], payments: [] }
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -129,7 +129,7 @@ export function AppProvider({ children }) {
   }
 
   const value = {
-    mock: USE_MOCK, media: backend.media, boot, bootError, retryBoot: start,
+    mock: USE_MOCK, media: backend.media, adminApi: backend.admin, boot, bootError, retryBoot: start,
     user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
     ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements, revealed, markRevealed,
     startAttempt, submitAttempt, upsertQuestion, upsertTest, getQuestionForEdit, refreshCatalog, toggleRevision,

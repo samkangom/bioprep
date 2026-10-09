@@ -93,6 +93,9 @@ function Workspace({ q, idx, mine, result, test, attemptId }) {
     return () => { off = true }
   }, [driver, tries]) // eslint-disable-line
 
+  const unlockedNow = app.isUnlocked(test.id)
+  useEffect(() => { if (phase === 'locked' && unlockedNow) setTries((n) => n + 1) }, [unlockedNow]) // eslint-disable-line
+
   const correct = explain?.answer.index ?? revealed[q.id]?.index
   if (phase === 'opening') return <div className="sol"><QuestionCard q={q} idx={idx} mine={mine} correct={correct} /><section className="card"><Loading label="Opening your explanation…" /></section></div>
   if (phase === 'error') return <div className="sol"><QuestionCard q={q} idx={idx} mine={mine} correct={correct} /><section className="card"><ErrorState message={err} onRetry={() => setTries((n) => n + 1)} /></section></div>

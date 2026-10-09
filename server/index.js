@@ -5,6 +5,7 @@ import { fromPool } from './db.js'
 import { supabaseVerifier } from './auth.js'
 import { createClaude } from './claude.js'
 import { supabaseStorage } from './storage.js'
+import { createRazorpay } from './razorpay.js'
 import { TUTOR_DAILY_TURNS } from '../shared/rules.js'
 
 const need = (k) => { if (!process.env[k]) { console.error(`Missing required env var ${k}. See .env.example.`); process.exit(1) } return process.env[k] }
@@ -23,11 +24,15 @@ const app = createApp({
   db: fromPool(pool),
   storage: supabaseStorage({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
   videoTtl: Number(process.env.VIDEO_URL_TTL_SECONDS || 600),
+  razorpay: process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? createRazorpay({ keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET }) : null,
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   verifyToken: supabaseVerifier({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
   claude,
   limits: { dailyTurns: Number(process.env.TUTOR_DAILY_LIMIT || TUTOR_DAILY_TURNS) },
   corsOrigins: (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 })
+
+if (!process.env.RAZORPAY_KEY_ID) console.warn('RAZORPAY_* is not set: payments are disabled.')
 
 const port = Number(process.env.PORT || 8787)
 app.listen(port, () => console.log(`BioPrep API on :${port}`))

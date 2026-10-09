@@ -1,24 +1,29 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
-import { Bars, Icon, Modal, inr } from '../ui.jsx'
+import { Bars, Icon, Modal, Loading, ErrorState, inr } from '../ui.jsx'
 import { sampleUsers, UNLOCK_PRICE } from '../data'
 import { describeError } from '../errors'
 import UploadField from './UploadField.jsx'
+import { StatusPill } from './Payments.jsx'
 
 const TABS = [
   ['dash', 'Dashboard', 'grid'],
   ['questions', 'Question bank', 'book'],
   ['tests', 'Tests', 'list'],
   ['analytics', 'Analytics', 'chart'],
+  ['payments', 'Payments', 'list', true],
   ['users', 'Users and plans', 'users'],
 ]
 
 export default function Admin() {
   const [tab, setTab] = useState('dash')
+  const { mock, user } = useApp()
+  const isAdmin = mock || user?.role === 'admin' // teachers manage content; money and people are admin-only
+  const tabs = TABS.filter(([, , , adminOnly]) => !adminOnly || isAdmin)
   return (
     <div className="admin">
       <nav className="side" aria-label="Admin">
-        {TABS.map(([k, label, icon]) => (
+        {tabs.map(([k, label, icon]) => (
           <button key={k} aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}><Icon n={icon} />{label}</button>
         ))}
       </nav>
@@ -27,6 +32,7 @@ export default function Admin() {
         {tab === 'questions' && <Questions />}
         {tab === 'tests' && <Tests />}
         {tab === 'analytics' && <Analytics />}
+        {tab === 'payments' && isAdmin && <PaymentsAdmin />}
         {tab === 'users' && <Users />}
       </div>
     </div>
@@ -317,6 +323,62 @@ function Users() {
             <td><button className="btn sm" onClick={() => setToast(`Manual unlock queued for ${u.name} (demo).`)}>Manual unlock</button></td></tr>
         ))}</tbody>
       </table></div></div>
+    </>
+  )
+}
+
+function PaymentsAdmin() {
+  const { adminApi, setToast, tests } = useApp()
+  const [rows, setRows] = useState(null)
+  const [err, setErr] = useState('')
+  const [flagging, setFlagging] = useState(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const load = () => { setErr(''); adminApi.listPayments().then(setRows).catch((e) => setErr(describeError(e, 'Could not load payments.'))) }
+  useEffect(load, []) // eslint-disable-line
+  const title = (id) => tests.find((t) => t.id === id)?.title ?? 'Test'
+  const flag = async (id, on, text) => {
+    setBusy(true)
+    try { await adminApi.flagRefund(id, on, text); setFlagging(null); setNote(''); setToast(on ? 'Flagged for refund.' : 'Refund flag cleared.'); load() }
+    catch (e) { setToast(describeError(e, 'Could not update the flag.')) }
+    setBusy(false)
+  }
+  const paidTotal = (rows || []).filter((r) => r.status === 'paid').reduce((a, r) => a + r.amountPaise, 0) / 100
+  return (
+    <>
+      <div className="row between"><h1>Payments</h1>{rows && <span className="pill">{rows.length} payments · {inr(paidTotal)} paid</span>}</div>
+      <p className="small muted">Flagging a refund does not move money. Issue the refund in the Razorpay dashboard; when Razorpay confirms it, the payment shows as Refunded and that unlock is revoked automatically.</p>
+      {err && <ErrorState message={err} onRetry={load} />}
+      {!rows && !err && <Loading label="Loading payments…" />}
+      {rows && rows.length === 0 && <div className="card"><p className="muted">No payments yet.</p></div>}
+      {rows && rows.length > 0 && (
+        <div className="card"><div className="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Student</th><th>Test</th><th>Amount</th><th>Method</th><th>Status</th><th>Refund</th></tr></thead>
+          <tbody>{rows.map((p) => (
+            <tr key={p.id}>
+              <td>{new Date(p.at).toLocaleString()}</td>
+              <td>{p.studentName}<div className="small muted num">{p.studentPhone}</div></td>
+              <td>{title(p.testId)}</td>
+              <td className="num">{inr(p.amountPaise / 100)}</td>
+              <td>{p.method || '-'}</td>
+              <td><StatusPill status={p.status} /></td>
+              <td>
+                {p.status === 'paid' && !p.refundFlag && <button className="btn sm" onClick={() => { setFlagging(p); setNote('') }}>Flag for refund</button>}
+                {p.refundFlag && <div className="stack" style={{ gap: 4 }}><span className="pill accent"><Icon n="flag" s={14} />Refund flagged</span>{p.refundNote && <span className="small muted">{p.refundNote}</span>}{p.status === 'paid' && <button className="btn ghost sm" disabled={busy} onClick={() => flag(p.id, false)}>Clear flag</button>}</div>}
+              </td>
+            </tr>
+          ))}</tbody>
+        </table></div></div>
+      )}
+      {flagging && (
+        <Modal title="Flag payment for refund" onClose={() => setFlagging(null)}>
+          <div className="stack">
+            <p className="small">{flagging.studentName} · {title(flagging.testId)} · {inr(flagging.amountPaise / 100)}</p>
+            <div className="field"><label htmlFor="rf-note">Reason (visible to admins only)</label><textarea id="rf-note" className="input" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+            <div className="row"><button className="btn primary" disabled={busy} onClick={() => flag(flagging.id, true, note)}>{busy ? 'Saving…' : 'Flag for refund'}</button><button className="btn ghost" onClick={() => setFlagging(null)}>Cancel</button></div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

@@ -10,6 +10,7 @@ import { createMemoryStorage } from './storage-shim.js'
 
 export const DEV_JWT_SECRET = 'dev-only-jwt-secret-do-not-use-anywhere-else'
 export const DEV_OTP = '123456'
+export const DEV_WEBHOOK_SECRET = 'dev-webhook-secret'
 export const DEV_ADMIN_PHONE = '9999999999'
 export const DEV_TEACHER_PHONE = '9888888888'
 
@@ -22,6 +23,7 @@ export async function startStack({ shimPort = 54321, apiPort = 8787, seed = true
   }
   if (onDb) await onDb(db)
   let shimUrl = ''
+  let orderSeq = 0
   const storage = createMemoryStorage({
     jwtSecret: DEV_JWT_SECRET, baseUrl: () => shimUrl,
     isStaff: async (uid) => (await db.query(`select role in ('teacher','admin') as s from public.profiles where id = $1`, [uid])).rows[0]?.s === true,
@@ -35,6 +37,9 @@ export async function startStack({ shimPort = 54321, apiPort = 8787, seed = true
   const claude = process.env.ANTHROPIC_API_KEY ? createClaude({ apiKey: process.env.ANTHROPIC_API_KEY }) : null
   const app = createApp({
     db: fromPglite(db), claude, corsOrigins: true, storage,
+    // Fake Razorpay: creates order ids locally. Payments are completed by POSTing a signed webhook (see tests/e2e).
+    razorpay: { keyId: 'rzp_test_devstack', createOrder: async ({ amountPaise }) => ({ id: `order_DEV${String(++orderSeq).padStart(5, '0')}`, amount: amountPaise, currency: 'INR', status: 'created' }) },
+    razorpayWebhookSecret: DEV_WEBHOOK_SECRET,
     verifyToken: async (t) => { const p = verifyJwt(t, DEV_JWT_SECRET); return p?.sub ? { id: p.sub } : null },
     ...apiOptions,
   })

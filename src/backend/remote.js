@@ -62,6 +62,10 @@ const toAttempt = (a, rows) => {
     score: a.score, max: a.max_score, at: Date.parse(a.submitted_at),
   }
 }
+const toPayment = (p) => ({
+  id: p.id, testId: p.test_id, amountPaise: p.amount_paise, status: p.status, paymentId: p.razorpay_payment_id,
+  refundFlag: p.refund_flag, refundNote: p.refund_note || '', at: Date.parse(p.paid_at || p.created_at),
+})
 const ATTEMPT_COLS = 'id,test_id,submitted_at,correct,wrong,skipped,score,max_score'
 const ANSWER_COLS = 'attempt_id,question_id,selected,is_correct,time_seconds'
 
@@ -84,13 +88,14 @@ async function questionsAndTests(isStaff) {
 export const data = {
   async loadAll(user) {
     const staff = user.role !== 'student'
-    const [qt, atts, ans, unl, free, rev] = await Promise.all([
+    const [qt, atts, ans, unl, free, rev, pays] = await Promise.all([
       questionsAndTests(staff),
       sb().from('attempts').select(ATTEMPT_COLS).eq('user_id', user.id).not('submitted_at', 'is', null).order('submitted_at', { ascending: false }),
       sb().from('attempt_answers').select(ANSWER_COLS),
       sb().from('unlocks').select('test_id').eq('user_id', user.id).is('revoked_at', null),
       sb().from('free_explanation_uses').select('question_id').eq('user_id', user.id),
       sb().from('revision_items').select('question_id').eq('user_id', user.id),
+      sb().from('payments').select('id,test_id,amount_paise,status,razorpay_payment_id,refund_flag,created_at,paid_at').eq('user_id', user.id).in('status', ['paid', 'refunded', 'failed']).order('created_at', { ascending: false }),
     ])
     const mine = must(atts)
     const rowsByAttempt = {}
@@ -101,6 +106,7 @@ export const data = {
       unlocked: must(unl).map((r) => r.test_id),
       freeUsed: must(free).map((r) => r.question_id),
       revision: must(rev).map((r) => r.question_id),
+      payments: must(pays).map(toPayment),
     }
   },
   async startAttempt(testId) { return must(await sb().rpc('start_attempt', { p_test: testId })) },
@@ -171,4 +177,19 @@ export const media = {
   imageUrl: (path) => (path ? sb().storage.from('diagrams').getPublicUrl(path).data.publicUrl : null),
   async removeVideo(path) { if (path) await sb().storage.from('videos').remove([path]) },
   async removeImage(path) { if (path) await sb().storage.from('diagrams').remove([path]) },
+}
+
+// ---- admin (RLS lets only admins read all payments; flagging goes through a SQL function) ----
+export const admin = {
+  async listPayments() {
+    const rows = must(await sb().from('payments').select('id,user_id,test_id,amount_paise,status,razorpay_payment_id,method,refund_flag,refund_note,created_at,paid_at').in('status', ['paid', 'refunded', 'failed']).order('created_at', { ascending: false }).limit(200))
+    const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))]
+    const people = ids.length ? must(await sb().from('profiles').select('id,name,phone').in('id', ids)) : []
+    const byId = Object.fromEntries(people.map((p) => [p.id, p]))
+    return rows.map((r) => ({
+      ...toPayment(r), method: r.method, studentName: byId[r.user_id]?.name || 'Deleted account',
+      studentPhone: byId[r.user_id]?.phone ? String(byId[r.user_id].phone).replace(/^(\d{2})(\d{2})\d{4}(\d{4})$/, '$1$2xxxx$3') : '',
+    }))
+  },
+  async flagRefund(id, flag, note) { must(await sb().rpc('admin_flag_refund', { p_payment: id, p_flag: flag, p_note: note || null })) },
 }

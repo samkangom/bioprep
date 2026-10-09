@@ -4,6 +4,7 @@ import { requireUser } from './auth.js'
 import { rateLimiter } from './ratelimit.js'
 import { HttpError, openSession, runTurn, finishSession, revealExplanation, wrapUp } from './tutor.js'
 import { videoUrl } from './video.js'
+import { registerPayments, registerWebhook } from './payments.js'
 import { TUTOR_DAILY_TURNS } from '../shared/rules.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -32,7 +33,8 @@ export function createApp(opts = {}) {
   }
 
   app.use(cors({ origin: corsOrigins === true ? true : corsOrigins.length ? corsOrigins : false, exposedHeaders: ['X-Tutor-Mode'] }))
-  extra?.pre?.(app, ctx) // raw-body routes (webhooks) must be mounted before express.json
+  registerWebhook(app, ctx) // needs the raw body, so it is mounted before express.json
+  extra?.pre?.(app, ctx)
   app.use(express.json({ limit: '32kb' }))
 
   const auth = requireUser(verifyToken)
@@ -76,6 +78,8 @@ export function createApp(opts = {}) {
     must(isUuid(req.body?.questionId))
     res.set('Cache-Control', 'no-store').json(await videoUrl(ctx, req.user.id, req.body.questionId))
   }))
+
+  registerPayments(app, ctx, { auth, limited, wrap, must, isUuid })
 
   extra?.routes?.(app, ctx, { auth, limited, wrap, must, isUuid })
 

@@ -14,7 +14,7 @@ const state = () => {
   S = {
     user: s.user ?? null, profiles: s.profiles ?? {},
     questions: s.questions ?? clone(initialQuestions), tests: s.tests ?? clone(initialTests),
-    unlocked: s.unlocked ?? [], freeUsed: s.freeUsed ?? [], attempts: s.attempts ?? [], revision: s.revision ?? [],
+    unlocked: s.unlocked ?? [], payments: s.payments ?? [], freeUsed: s.freeUsed ?? [], attempts: s.attempts ?? [], revision: s.revision ?? [],
     open: {},
   }
   return S
@@ -24,7 +24,7 @@ const persist = () => {
 }
 const snapshot = () => {
   const s = state()
-  return clone({ questions: s.questions, tests: s.tests, attempts: s.attempts, unlocked: s.unlocked, freeUsed: s.freeUsed, revision: s.revision })
+  return clone({ questions: s.questions, tests: s.tests, attempts: s.attempts, unlocked: s.unlocked, freeUsed: s.freeUsed, revision: s.revision, payments: s.payments })
 }
 export const legacyTheme = () => read()?.theme ?? null
 
@@ -98,10 +98,18 @@ export const data = {
   },
   // Demo-only helpers: entitlement lives in the browser here.
   async registerFree(qid) { const s = state(); if (!s.freeUsed.includes(qid)) { s.freeUsed.push(qid); persist() } },
-  async unlock(testId) { const s = state(); if (!s.unlocked.includes(testId)) { s.unlocked.push(testId); persist() } },
+  async unlock(testId) {
+    const s = state()
+    if (!s.unlocked.includes(testId)) {
+      s.unlocked.push(testId)
+      const t = s.tests.find((x) => x.id === testId)
+      s.payments.unshift({ id: 'p' + Date.now(), testId, amountPaise: (t?.price ?? 100) * 100, status: 'paid', paymentId: 'demo_payment', at: Date.now(), refundFlag: false, userName: s.user?.name || 'Demo user' })
+      persist()
+    }
+  },
   async reset() {
     const s = state()
-    Object.assign(s, { unlocked: [], freeUsed: [], attempts: [], revision: [], questions: clone(initialQuestions), tests: clone(initialTests) })
+    Object.assign(s, { unlocked: [], payments: [], freeUsed: [], attempts: [], revision: [], questions: clone(initialQuestions), tests: clone(initialTests) })
     persist()
     return snapshot()
   },
@@ -125,4 +133,10 @@ export const media = {
   imageUrl: (path) => path,
   async removeVideo() {},
   async removeImage() {},
+}
+
+// Admin helpers (demo): payments are the local demo payments; refund flags only change the flag.
+export const admin = {
+  async listPayments() { return clone(state().payments).map((p) => ({ ...p, studentName: p.userName, studentPhone: '00xxxxxx00' })) },
+  async flagRefund(id, flag, note) { const p = state().payments.find((x) => x.id === id); if (p) { p.refundFlag = flag; p.refundNote = flag ? note : ''; persist() } },
 }

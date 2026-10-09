@@ -8,6 +8,7 @@ import Result from './views/Result.jsx'
 import Solution from './views/Solution.jsx'
 import Paywall from './views/Paywall.jsx'
 import Profile from './views/Profile.jsx'
+import Payments from './views/Payments.jsx'
 import Admin from './views/Admin.jsx'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
       case 'result': page = <Result attemptId={route.attemptId} />; break
       case 'solution': page = <Solution attemptId={route.attemptId} qid={route.qid} />; break
       case 'profile': page = <Profile />; break
+      case 'payments': page = <Payments />; break
       default: page = <Home />
     }
   }

@@ -25,7 +25,10 @@ export default function Profile() {
         {revision.length === 0 ? <p className="muted">Questions you save from a solution show up here.</p> :
           <ul>{revision.map((id) => <li key={id}>{questions.find((q) => q.id === id)?.text}</li>)}</ul>}
       </div>
-      <p className="muted small">Per-test unlock price: {inr(100)}.</p>
+      <div className="card row between">
+        <div className="stack" style={{ gap: 2 }}><h2>Payments</h2><p className="muted small">Per-test unlock price: {inr(100)}.</p></div>
+        <button className="btn" onClick={() => go('payments')}>Payment history</button>
+      </div>
     </div>
   )
 }
