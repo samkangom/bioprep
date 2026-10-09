@@ -97,7 +97,7 @@ describe('scripted tutor session', () => {
     expect(t2.json).toMatchObject({ done: true, choices: [] })
     const reveal = await call(s.token, 'GET', `/api/explain/${Q}`)
     expect(reveal.status).toBe(200)
-    expect(reveal.json).toMatchObject({ answer: { index: 1, letter: 'B', text: '680 nm' }, explanation: secret })
+    expect(reveal.json).toMatchObject({ answer: { index: 1, text: '680 nm' }, explanation: secret })
     expect((await call(s.token, 'POST', '/api/tutor/wrapup', { questionId: Q, messages: [{ from: 'me', text: 'x' }] })).json).toHaveProperty('tip')
     // finished sessions cannot take more turns
     expect((await turn(s, Q, 'again')).status).toBe(409)

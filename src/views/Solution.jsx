@@ -5,6 +5,7 @@ import { shuffle } from '../../shared/tutor-core.js'
 import { MAX_HINTS } from '../../shared/rules.js'
 import { apiDriver, mockDriver } from '../tutorDriver.js'
 import { describeError } from '../errors'
+import { optLabel } from '../../shared/labels.js'
 
 const STAGES = ['Recall', 'Reason', 'Apply']
 
@@ -47,7 +48,7 @@ function QuestionCard({ q, idx, mine, correct }) {
           const right = known && i === correct, picked = i === mine
           return (
             <div key={i} className={'opt' + (right ? ' right' : picked && known ? ' wrongpick' : '')} style={{ cursor: 'default', fontSize: 16 }}>
-              <span className="letter">{'ABCD'[i]}</span><span>{o}</span>
+              <span className="letter">{optLabel(q.optionStyle, i)}</span><span>{o}</span>
               {right && <span className="tag" style={{ color: 'var(--good)' }}><Icon n="check" s={14} />Correct</span>}
               {picked && known && !right && <span className="tag" style={{ color: 'var(--bad)' }}><Icon n="x" s={14} />Your answer</span>}
               {picked && !known && <span className="tag"><Icon n="flag" s={14} />Your answer</span>}
@@ -337,10 +338,10 @@ function Tutor({ q, driver, session, explain, onRevealed }) {
               {wrap?.tip && <p className="small"><b>Exam tip:</b> {wrap.tip}</p>}
             </div>
           )}
-          <div className="pill good" style={{ alignSelf: 'flex-start' }}><Icon n="check" s={14} />Answer: {explain.answer.letter}. {explain.answer.text}</div>
+          <div className="pill good" style={{ alignSelf: 'flex-start' }}><Icon n="check" s={14} />Answer: {optLabel(q.optionStyle, explain.answer.index)}. {explain.answer.text}</div>
           <p>{explain.explanation}</p>
           <div className="why">
-            {q.options.map((o, i) => i !== explain.answer.index && explain.whyWrong?.[i] && <div key={i}><b>{'ABCD'[i]}.</b><span>{explain.whyWrong[i]}</span></div>)}
+            {q.options.map((o, i) => i !== explain.answer.index && explain.whyWrong?.[i] && <div key={i}><b>{optLabel(q.optionStyle, i)}.</b><span>{explain.whyWrong[i]}</span></div>)}
           </div>
           {(explain.recap?.concept || explain.recap?.mistake) && (
             <div className="card" style={{ background: 'var(--surface2)', padding: 14 }}>

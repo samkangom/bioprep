@@ -58,7 +58,7 @@ const toTest = (t, qids) => ({
 })
 const toQuestion = (q, video) => ({
   id: q.id, subject: q.subject, chapter: q.chapter, difficulty: q.difficulty, text: q.text, options: q.options,
-  imagePath: q.image_path || null, imageAlt: q.image_alt || '', status: q.status, video: video ?? null,
+  optionStyle: q.option_style || 'ABCD', imagePath: q.image_path || null, imageAlt: q.image_alt || '', status: q.status, video: video ?? null,
 })
 const toAttempt = (a, rows) => {
   const answers = {}, times = {}, results = {}
@@ -83,7 +83,7 @@ async function questionsAndTests(isStaff) {
   const [tests, tq, qs, secrets] = await Promise.all([
     sb().from('tests').select('id,title,kind,duration_minutes,price_inr,published').order('created_at'),
     sb().from('test_questions').select('test_id,question_id,position').order('position'),
-    sb().from('questions').select('id,subject,chapter,difficulty,text,options,image_path,image_alt,status').order('created_at'),
+    sb().from('questions').select('id,subject,chapter,difficulty,text,options,option_style,image_path,image_alt,status').order('created_at'),
     isStaff ? sb().from('question_secrets').select('question_id,video_path') : Promise.resolve({ data: [] }),
   ])
   const byTest = {}
@@ -134,7 +134,7 @@ export const data = {
   },
   async upsertQuestion(q) {
     const payload = {
-      id: q.id, subject: q.subject, chapter: q.chapter, difficulty: q.difficulty, text: q.text, options: q.options,
+      id: q.id, subject: q.subject, chapter: q.chapter, difficulty: q.difficulty, text: q.text, options: q.options, optionStyle: q.optionStyle || 'ABCD',
       correct: q.correct, explanation: q.explanation, whyWrong: q.whyWrong, recap: q.recap, ncert: q.ncert,
       caption: q.caption, videoPath: [q.videoPath, q.video].find((v) => v && !String(v).startsWith('blob:')) ?? null, imagePath: q.imagePath && !String(q.imagePath).startsWith('blob:') ? q.imagePath : null, imageAlt: q.imageAlt || '', status: q.status,
       socratic: q.socratic.map((s) => ({ ask: s.ask, keys: s.keys, hint: s.hint, good: s.good, sample: s.sample, choices: s.choices || [] })),

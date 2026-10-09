@@ -1,5 +1,6 @@
 import { useApp } from '../store.jsx'
 import { Bars, Donut, Icon, fmt } from '../ui.jsx'
+import { optLabel } from '../../shared/labels.js'
 
 export default function Result({ attemptId }) {
   const { attempts, tests, questions, go, isUnlocked, setPaywall, freeLeft, revealed } = useApp()
@@ -99,8 +100,8 @@ export default function Result({ attemptId }) {
                 <tr key={q.id}>
                   <td className="num">{n + 1}</td>
                   <td className="q">{q.text}<div className="muted small">{q.subject} · {q.chapter}</div></td>
-                  <td>{mine === undefined ? '—' : `${'ABCD'[mine]}. ${q.options[mine]}`}</td>
-                  <td>{revealed[q.id] ? `${revealed[q.id].letter}. ${revealed[q.id].text}` : <span className="muted small">Shown with the explanation</span>}</td>
+                  <td>{mine === undefined ? '—' : `${optLabel(q.optionStyle, mine)}. ${q.options[mine]}`}</td>
+                  <td>{revealed[q.id] ? `${optLabel(q.optionStyle, revealed[q.id].index)}. ${revealed[q.id].text}` : <span className="muted small">Shown with the explanation</span>}</td>
                   <td>{s === 'right' ? <span className="pill good"><Icon n="check" s={14} />Correct</span> : s === 'wrong' ? <span className="pill bad"><Icon n="x" s={14} />Incorrect</span> : <span className="pill">Skipped</span>}</td>
                   <td><button className="btn sm" onClick={() => go('solution', { attemptId: a.id, qid: q.id })}>Explain</button></td>
                 </tr>

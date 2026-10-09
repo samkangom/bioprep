@@ -1,8 +1,10 @@
+import { LABEL_STYLES, optLabel } from '../shared/labels.js'
+
 // CSV import for the question bank. Pure functions so they are easy to test.
 // Columns: subject, chapter, difficulty, question, optA..optD, correct, ncert, explanation,
 //          ask1, keys1, hint1, ask2, keys2, hint2   (optional: ask3, keys3, hint3)
 export const COLUMNS = ['subject', 'chapter', 'difficulty', 'question', 'optA', 'optB', 'optC', 'optD', 'correct', 'ncert', 'explanation', 'ask1', 'keys1', 'hint1', 'ask2', 'keys2', 'hint2']
-export const OPTIONAL_COLUMNS = ['ask3', 'keys3', 'hint3']
+export const OPTIONAL_COLUMNS = ['ask3', 'keys3', 'hint3', 'optstyle']
 export const MAX_ROWS = 500
 export const MAX_BYTES = 1024 * 1024
 const REQUIRED_HEADER = ['subject', 'chapter', 'question', 'optA', 'optB', 'optC', 'optD', 'correct']
@@ -70,7 +72,10 @@ export function validateImport(rows, existingTexts = new Set()) {
     if (!text) errors.push('Question text is required.')
     else if (text.length > 2000) errors.push('Question text is longer than 2000 characters.')
     const options = ['optA', 'optB', 'optC', 'optD'].map((c) => get(r, c))
-    options.forEach((o, i) => { if (!o) errors.push(`Option ${'ABCD'[i]} is empty.`) })
+    options.forEach((o, i) => { if (!o) errors.push(`Option ${optLabel('ABCD', i)} is empty.`) })
+    const styleRaw = get(r, 'optstyle')
+    const optionStyle = !styleRaw ? 'ABCD' : Object.keys(LABEL_STYLES).find((k) => k.toLowerCase() === styleRaw.toLowerCase().replace(/\s+/g, ''))
+    if (!optionStyle) errors.push(`Option style must be one of: ${Object.keys(LABEL_STYLES).join(', ')}.`)
     const cRaw = get(r, 'correct')
     let correct = -1
     if (/^[A-Da-d]$/.test(cRaw)) correct = 'ABCD'.indexOf(cRaw.toUpperCase())
@@ -98,7 +103,7 @@ export function validateImport(rows, existingTexts = new Set()) {
 
     if (errors.length) warnings.length = 0 // fix the errors first; warnings would only add noise
     const question = errors.length ? null : {
-      subject, chapter, difficulty, text, options, correct, ncert: get(r, 'ncert'), explanation,
+      subject, chapter, difficulty, text, options, optionStyle, correct, ncert: get(r, 'ncert'), explanation,
       whyWrong: ['', '', '', ''], recap: { concept: '', mistake: '' }, caption: '', video: null, imagePath: null, status: 'draft', socratic,
     }
     return { line, errors, warnings, question }

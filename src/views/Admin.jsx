@@ -3,6 +3,7 @@ import { useApp } from '../store.jsx'
 import { Bars, Icon, Modal, Loading, ErrorState, inr } from '../ui.jsx'
 import { sampleUsers, UNLOCK_PRICE } from '../data'
 import { describeError } from '../errors'
+import { LABEL_STYLES, optLabel } from '../../shared/labels.js'
 import UploadField from './UploadField.jsx'
 import CsvImport from './CsvImport.jsx'
 import { StatusPill } from './Payments.jsx'
@@ -118,7 +119,7 @@ function Questions() {
 }
 
 const blank = () => ({
-  id: crypto.randomUUID(), subject: 'Botany', chapter: '', difficulty: 'Medium', text: '', options: ['', '', '', ''], correct: 0,
+  id: crypto.randomUUID(), subject: 'Botany', chapter: '', difficulty: 'Medium', text: '', options: ['', '', '', ''], correct: 0, optionStyle: 'ABCD',
   ncert: '', explanation: '', whyWrong: ['', '', '', ''], recap: { concept: '', mistake: '' }, caption: '', video: null, imagePath: null, imageAlt: '', status: 'draft',
   socratic: [{ ask: '', keys: [], hint: '', good: '', sample: '' }, { ask: '', keys: [], hint: '', good: '', sample: '' }],
 })
@@ -179,11 +180,17 @@ function QuestionForm({ initial, onClose }) {
         </div>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} className="stack">
           <legend className="small" style={{ fontWeight: 600, marginBottom: 6 }}>Options. Select the correct one.</legend>
+          <div className="field" style={{ maxWidth: 260 }}>
+            <label htmlFor="f-ls">Option labels</label>
+            <select id="f-ls" className="input" value={q.optionStyle || 'ABCD'} onChange={(e) => set('optionStyle', e.target.value)}>
+              {Object.entries(LABEL_STYLES).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+            </select>
+          </div>
           {q.options.map((o, i) => (
             <div className="row" style={{ flexWrap: 'nowrap' }} key={i}>
-              <input type="radio" name="correct" id={`c${i}`} checked={q.correct === i} onChange={() => set('correct', i)} style={{ width: 20, height: 20, accentColor: 'var(--primary)' }} aria-label={`Option ${'ABCD'[i]} is correct`} />
-              <span style={{ fontWeight: 600, width: 18 }}>{'ABCD'[i]}</span>
-              <input className="input" value={o} onChange={(e) => setOpt(i, e.target.value)} aria-label={`Option ${'ABCD'[i]}`} />
+              <input type="radio" name="correct" id={`c${i}`} checked={q.correct === i} onChange={() => set('correct', i)} style={{ width: 20, height: 20, accentColor: 'var(--primary)' }} aria-label={`Option ${optLabel(q.optionStyle, i)} is correct`} />
+              <span style={{ fontWeight: 600, minWidth: 26 }}>{optLabel(q.optionStyle, i)}</span>
+              <input className="input" value={o} onChange={(e) => setOpt(i, e.target.value)} aria-label={`Option ${optLabel(q.optionStyle, i)}`} />
             </div>
           ))}
         </fieldset>

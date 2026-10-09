@@ -2,7 +2,7 @@
 // database and never leaves the server until the session is marked finished.
 import {
   sanitizeMessages, turnPrompt, wrapUpPrompt, validateTurn, validateWrapUp, leaksAnswer,
-  scriptedTurn, scriptedWrapUp, shuffle, LETTERS,
+  scriptedTurn, scriptedWrapUp, shuffle,
 } from '../shared/tutor-core.js'
 import { MAX_HINTS, TUTOR_MAX_TURNS, TUTOR_SECONDS } from '../shared/rules.js'
 
@@ -15,7 +15,7 @@ const GRACE_SECONDS = 3
 
 export async function loadQuestion(db, questionId) {
   const { rows } = await db.query(
-    `select q.id, q.text, q.options, q.subject, q.chapter, s.correct, s.explanation, s.why_wrong, s.recap, s.ncert, s.caption, s.video_path
+    `select q.id, q.text, q.options, q.option_style, q.subject, q.chapter, s.correct, s.explanation, s.why_wrong, s.recap, s.ncert, s.caption, s.video_path
        from public.questions q join public.question_secrets s on s.question_id = q.id
       where q.id = $1 and q.status = 'published'`, [questionId])
   if (!rows[0]) throw new HttpError(404, 'question_not_found')
@@ -23,7 +23,7 @@ export async function loadQuestion(db, questionId) {
     `select position, ask, keys, hint, good, choices from public.socratic_steps where question_id = $1 order by position`, [questionId])
   if (steps.length < 1) throw new HttpError(404, 'question_not_found')
   const r = rows[0]
-  return { ...r, whyWrong: r.why_wrong, socratic: steps }
+  return { ...r, optionStyle: r.option_style, whyWrong: r.why_wrong, socratic: steps }
 }
 
 /** Latest session for this student and question, with server-measured elapsed seconds. */
@@ -160,7 +160,7 @@ export async function revealExplanation(db, userId, questionId) {
   if (!s || s.status !== 'finished') throw new HttpError(403, 'not_finished')
   const q = await loadQuestion(db, questionId)
   return {
-    answer: { index: q.correct, letter: LETTERS[q.correct], text: q.options[q.correct] },
+    answer: { index: q.correct, text: q.options[q.correct] },
     explanation: q.explanation, whyWrong: q.whyWrong, recap: q.recap, ncert: q.ncert, caption: q.caption,
     hasVideo: !!q.video_path,
   }

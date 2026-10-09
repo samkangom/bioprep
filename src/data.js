@@ -2,7 +2,7 @@
 import { APP_NAME, UNLOCK_PRICE, FREE_EXPLANATIONS, MARKS } from '../shared/rules.js'
 export { APP_NAME, UNLOCK_PRICE, FREE_EXPLANATIONS, MARKS }
 
-const q = (o) => ({ difficulty: 'Medium', marks: 4, status: 'published', video: null, ...o })
+const q = (o) => ({ difficulty: 'Medium', optionStyle: 'ABCD', marks: 4, status: 'published', video: null, ...o })
 
 export const initialQuestions = [
   q({

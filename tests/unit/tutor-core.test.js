@@ -41,6 +41,8 @@ describe('leaksAnswer', () => {
     expect(leaksAnswer('The correct answer is LH.', q)).toBe(true)
     expect(leaksAnswer('The answer is B', q)).toBe(true)
     expect(leaksAnswer('Pick option B, I think.', q)).toBe(true)
+    expect(leaksAnswer('Go for option 2.', q)).toBe(true)
+    expect(leaksAnswer('Choice (iii) looks right.', q)).toBe(true)
     expect(leaksAnswer('A mid-cycle surge of LH causes the Graafian follicle to rupture', q)).toBe(true)
     expect(leaksAnswer('Good thinking. Which hormone from the follicle drives that surge?', q)).toBe(false)
     expect(leaksAnswer('Beautiful. Optionally, think about timing.', q)).toBe(false)

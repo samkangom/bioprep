@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { Icon, Modal, ErrorState, Loading, QuestionImage, fmt } from '../ui.jsx'
 import { describeError } from '../errors'
+import { optLabel } from '../../shared/labels.js'
 import { MARKS } from '../data'
 
 export function Instructions({ testId }) {
@@ -121,7 +122,7 @@ function Run({ test, attemptId }) {
             <div className="opts" role="group" aria-label="Options">
               {q.options.map((o, idx) => (
                 <button key={idx} className="opt" aria-pressed={ans[q.id] === idx} onClick={() => pick(idx)}>
-                  <span className="letter">{'ABCD'[idx]}</span><span>{o}</span>
+                  <span className="letter">{optLabel(q.optionStyle, idx)}</span><span>{o}</span>
                 </button>
               ))}
             </div>

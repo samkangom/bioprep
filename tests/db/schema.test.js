@@ -107,6 +107,14 @@ describe('row-level security: writing', () => {
     const draft = (await db.query(`select id from public.questions where status = 'draft' limit 1`)).rows[0].id
     await rejects(as(teacher)((tx) => tx.query('select public.admin_upsert_test($1::jsonb)', [JSON.stringify({ title: 'T', published: true, qids: [draft] })])), /must be published/)
   })
+  it('option label style is stored per question and limited to known styles', async () => {
+    const base = { subject: 'Botany', chapter: 'c', text: 'Style Q', options: ['a', 'b', 'c', 'd'], correct: 0, explanation: 'e', status: 'draft' }
+    const id = (await as(teacher)((tx) => q(tx, 'select public.admin_upsert_question($1::jsonb) id', [JSON.stringify({ ...base, optionStyle: 'roman' })])))[0].id
+    expect((await as(teacher)((tx) => q(tx, 'select public.admin_get_question($1) j', [id])))[0].j.optionStyle).toBe('roman')
+    const id2 = (await as(teacher)((tx) => q(tx, 'select public.admin_upsert_question($1::jsonb) id', [JSON.stringify({ ...base, text: 'No style' })])))[0].id
+    expect((await db.query('select option_style from public.questions where id = $1', [id2])).rows[0].option_style).toBe('ABCD')
+    await rejects(as(teacher)((tx) => tx.query('select public.admin_upsert_question($1::jsonb)', [JSON.stringify({ ...base, optionStyle: 'xyz' })])), /option_style/)
+  })
   it('a staff-built test keeps question order', async () => {
     const ids = (await db.query(`select id from public.questions where status = 'published' order by text limit 3`)).rows.map((r) => r.id)
     const tid = (await as(teacher)((tx) => q(tx, 'select public.admin_upsert_test($1::jsonb) id', [JSON.stringify({ title: 'Ordered', published: true, duration: 3, price: 50, qids: [ids[2], ids[0], ids[1]] })])))[0].id

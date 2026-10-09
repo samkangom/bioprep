@@ -4,7 +4,7 @@
 import { api, apiRaw, ApiError } from './api'
 import { CHOICES } from './data'
 import { TUTOR_SECONDS, TUTOR_MAX_TURNS } from '../shared/rules.js'
-import { scriptedTurn, scriptedWrapUp, shuffle, LETTERS } from '../shared/tutor-core.js'
+import { scriptedTurn, scriptedWrapUp, shuffle } from '../shared/tutor-core.js'
 import { getSample, claudeTurn, claudeWrapUp, errorCopy } from './tutor.js'
 
 const wire = (msgs) => msgs.map(({ from, text }) => ({ from, text }))
@@ -64,7 +64,7 @@ export function mockDriver({ q, testId, app }) {
     async finish() {},
     async reveal() {
       return {
-        answer: { index: q.correct, letter: LETTERS[q.correct], text: q.options[q.correct] },
+        answer: { index: q.correct, text: q.options[q.correct] },
         explanation: q.explanation, whyWrong: q.whyWrong, recap: q.recap, ncert: q.ncert, caption: q.caption, hasVideo: !!q.video,
       }
     },

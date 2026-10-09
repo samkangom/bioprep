@@ -138,12 +138,12 @@ begin
     end if;
   end if;
 
-  insert into public.questions (id, subject, chapter, difficulty, text, options, image_path, image_alt, status, created_by)
+  insert into public.questions (id, subject, chapter, difficulty, text, options, option_style, image_path, image_alt, status, created_by)
   values (v_id, p ->> 'subject', btrim(coalesce(p ->> 'chapter', '')), coalesce(nullif(p ->> 'difficulty', ''), 'Medium'),
-          btrim(coalesce(p ->> 'text', '')), p -> 'options', nullif(p ->> 'imagePath', ''), left(nullif(btrim(coalesce(p ->> 'imageAlt', '')), ''), 300), v_status, auth.uid())
+          btrim(coalesce(p ->> 'text', '')), p -> 'options', coalesce(nullif(p ->> 'optionStyle', ''), 'ABCD'), nullif(p ->> 'imagePath', ''), left(nullif(btrim(coalesce(p ->> 'imageAlt', '')), ''), 300), v_status, auth.uid())
   on conflict (id) do update
      set subject = excluded.subject, chapter = excluded.chapter, difficulty = excluded.difficulty, text = excluded.text,
-         options = excluded.options, image_path = excluded.image_path, image_alt = excluded.image_alt, status = excluded.status;
+         options = excluded.options, option_style = excluded.option_style, image_path = excluded.image_path, image_alt = excluded.image_alt, status = excluded.status;
 
   insert into public.question_secrets (question_id, correct, explanation, why_wrong, recap, ncert, caption, video_path)
   values (v_id, coalesce((p ->> 'correct')::int, 0), coalesce(p ->> 'explanation', ''),
@@ -175,7 +175,7 @@ begin
   return (
     select jsonb_build_object(
       'id', q.id, 'subject', q.subject, 'chapter', q.chapter, 'difficulty', q.difficulty, 'text', q.text,
-      'options', q.options, 'imagePath', q.image_path, 'imageAlt', q.image_alt, 'status', q.status,
+      'options', q.options, 'optionStyle', q.option_style, 'imagePath', q.image_path, 'imageAlt', q.image_alt, 'status', q.status,
       'correct', s.correct, 'explanation', s.explanation, 'whyWrong', s.why_wrong, 'recap', s.recap,
       'ncert', s.ncert, 'caption', s.caption, 'videoPath', s.video_path,
       'socratic', (select coalesce(jsonb_agg(jsonb_build_object(

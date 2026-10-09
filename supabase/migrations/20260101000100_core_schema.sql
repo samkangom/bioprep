@@ -64,6 +64,7 @@ create table public.questions (
   text        text not null check (char_length(text) between 1 and 2000),
   options     jsonb not null check (jsonb_typeof(options) = 'array' and jsonb_array_length(options) = 4),
   image_path  text,
+  option_style text not null default 'ABCD' check (option_style in ('ABCD', 'abcd', '1234', 'roman', 'ROMAN', 'hindi')),
   image_alt   text check (char_length(image_alt) <= 300),
   status      public.question_status not null default 'draft',
   created_by  uuid references public.profiles (id) on delete set null,
