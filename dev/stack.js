@@ -40,6 +40,7 @@ export async function startStack({ shimPort = 54321, apiPort = 8787, seed = true
     // Fake Razorpay: creates order ids locally. Payments are completed by POSTing a signed webhook (see tests/e2e).
     razorpay: { keyId: 'rzp_test_devstack', createOrder: async ({ amountPaise }) => ({ id: `order_DEV${String(++orderSeq).padStart(5, '0')}`, amount: amountPaise, currency: 'INR', status: 'created' }) },
     razorpayWebhookSecret: DEV_WEBHOOK_SECRET,
+    deleteUser: async (id) => { await db.query('delete from auth.users where id = $1', [id]) },
     verifyToken: async (t) => { const p = verifyJwt(t, DEV_JWT_SECRET); return p?.sub ? { id: p.sub } : null },
     ...apiOptions,
   })

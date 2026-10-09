@@ -19,7 +19,7 @@ describe('remote backend as a student', () => {
   it('signs in with a phone code and completes the profile once', async () => {
     user = await signIn('9811111111')
     expect(user).toMatchObject({ role: 'student', onboarded: false })
-    user = await auth.completeProfile({ name: 'Meena', year: '2028' })
+    user = await auth.completeProfile({ name: 'Meena', year: '2028', birthDate: '2007-01-15', consent: true, guardian: { name: 'Sita Devi', phone: '9822222222', relationship: 'mother' } })
     expect(user).toMatchObject({ name: 'Meena', year: '2028', onboarded: true })
   })
   it('rejects a wrong code', async () => {

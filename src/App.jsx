@@ -9,11 +9,13 @@ import Solution from './views/Solution.jsx'
 import Paywall from './views/Paywall.jsx'
 import Profile from './views/Profile.jsx'
 import Payments from './views/Payments.jsx'
+import Privacy from './views/Privacy.jsx'
+import { LANGUAGES } from './i18n'
 import Admin from './views/Admin.jsx'
 
 export default function App() {
   const a = useApp()
-  const { user, role, setRole, route, go, theme, setTheme, fast, setFast, freeLeft, toast, mock, boot } = a
+  const { user, role, setRole, route, go, theme, setTheme, fast, setFast, freeLeft, toast, mock, boot, t, lang, setLang } = a
   const ready = !!user && user.onboarded
   const staff = mock || (user && user.role !== 'student')
   const inTest = route.name === 'test'
@@ -22,6 +24,7 @@ export default function App() {
   let page
   if (boot === 'loading') page = <Loading label="Loading BioPrep…" />
   else if (boot === 'error') page = <div className="wrap"><ErrorState message={a.bootError} onRetry={a.retryBoot} /></div>
+  else if (route.name === 'privacy') page = <Privacy />
   else if (!ready) page = <Auth />
   else if (role === 'admin') page = <Admin />
   else {
@@ -40,7 +43,7 @@ export default function App() {
     <>
       <header className="topbar">
         <div className="topbar-in">
-          <button className="brand" onClick={() => { setRole('student'); go('home') }} aria-label={`${APP_NAME} home`}>
+          <button className="brand" onClick={() => { setRole('student'); go('home') }} aria-label={t('nav.homeAria', { app: APP_NAME })}>
             <span className="brand-mark">B</span>{APP_NAME}
           </button>
           <div className="grow" />
@@ -48,29 +51,30 @@ export default function App() {
             <>
               {staff && (
                 <div className="seg" role="group" aria-label={mock ? 'Demo role' : 'View as'}>
-                  <button aria-pressed={role === 'student'} onClick={() => { setRole('student'); go('home') }}>Student</button>
-                  <button aria-pressed={role === 'admin'} onClick={() => setRole('admin')}>{mock ? 'Admin' : 'Staff'}</button>
+                  <button aria-pressed={role === 'student'} onClick={() => { setRole('student'); go('home') }}>{t('nav.student')}</button>
+                  <button aria-pressed={role === 'admin'} onClick={() => setRole('admin')}>{mock ? t('nav.admin') : t('nav.staff')}</button>
                 </div>
               )}
-              {role === 'student' && <span className="pill accent hide-sm" title="Free plan allowance">Free explanations left: {freeLeft}</span>}
-              {mock && <label className="toggle hide-sm"><input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} />Demo speed ×20</label>}
+              {role === 'student' && <span className="pill accent hide-sm" title="Free plan allowance">{t('nav.freeLeft', { n: freeLeft })}</span>}
+              {mock && <label className="toggle hide-sm"><input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} />{t('nav.demoSpeed')}</label>}
             </>
           )}
-          <select className="input" style={{ width: 'auto', minHeight: 40 }} aria-label="Language" defaultValue="en">
-            <option value="en">English</option>
-            <option value="hi" disabled>हिन्दी (soon)</option>
-            <option value="mni" disabled>Meiteilon (soon)</option>
+          <select className="input" style={{ width: 'auto', minHeight: 44 }} aria-label={t('lang.label')} value={lang} onChange={(e) => setLang(e.target.value)}>
+            {LANGUAGES.map((l) => <option key={l.code} value={l.code} disabled={!l.ready}>{l.label}{l.ready ? '' : ` ${t('lang.soon')}`}</option>)}
           </select>
-          <button className="icon-btn" onClick={() => setTheme(dark ? 'light' : 'dark')} aria-label="Toggle dark mode"><Icon n={dark ? 'sun' : 'moon'} /></button>
-          {ready && role === 'student' && !inTest && <button className="btn sm" onClick={() => go('profile')}>{(user.name || 'Profile').split(' ')[0]}</button>}
-          {user && !inTest && <button className="icon-btn" onClick={a.signOut} aria-label="Sign out"><Icon n="logout" /></button>}
+          <button className="icon-btn" onClick={() => setTheme(dark ? 'light' : 'dark')} aria-label={t('nav.darkMode')}><Icon n={dark ? 'sun' : 'moon'} /></button>
+          {ready && role === 'student' && !inTest && <button className="btn sm" onClick={() => go('profile')}>{(user.name || t('nav.profile')).split(' ')[0]}</button>}
+          {user && !inTest && <button className="icon-btn" onClick={a.signOut} aria-label={t('nav.signOut')}><Icon n="logout" /></button>}
         </div>
       </header>
       <main>{page}</main>
-      {ready && mock && (
+      {!inTest && (
         <div className="footer">
-          <span>Prototype. Sample data only.</span>
-          <button className="link" onClick={a.resetDemo}>Reset demo (restore free plan)</button>
+          {ready && mock ? <span>{t('footer.prototype')}</span> : <span />}
+          <span className="row" style={{ gap: 16 }}>
+            <button className="link" onClick={() => go('privacy')}>{t('footer.privacy')}</button>
+            {ready && mock && <button className="link" onClick={a.resetDemo}>{t('footer.reset')}</button>}
+          </span>
         </div>
       )}
       {a.paywall && <Paywall testId={a.paywall} />}

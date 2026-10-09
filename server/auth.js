@@ -28,3 +28,12 @@ export const requireUser = (verifyToken) => async (req, res, next) => {
     next(e)
   }
 }
+
+/** Deletes an auth user (cascades to all of their data via foreign keys). Service key, server only. */
+export function supabaseUserDeleter({ url, serviceKey }) {
+  const sb = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  return async (userId) => {
+    const { error } = await sb.auth.admin.deleteUser(userId)
+    if (error) throw error
+  }
+}

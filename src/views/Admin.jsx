@@ -279,8 +279,8 @@ function TestForm({ initial, onClose }) {
               return (
                 <div key={id} className="row" style={{ flexWrap: 'nowrap' }}>
                   <span className="num muted">{i + 1}</span><span className="small grow">{q?.text.slice(0, 70)}…</span>
-                  <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
-                  <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
+                  <button className="icon-btn" style={{ width: 44, height: 44 }} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
+                  <button className="icon-btn" style={{ width: 44, height: 44 }} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
                 </div>
               )
             })}

@@ -2,7 +2,7 @@
 import pg from 'pg'
 import { createApp } from './app.js'
 import { fromPool } from './db.js'
-import { supabaseVerifier } from './auth.js'
+import { supabaseVerifier, supabaseUserDeleter } from './auth.js'
 import { createClaude } from './claude.js'
 import { supabaseStorage } from './storage.js'
 import { createRazorpay } from './razorpay.js'
@@ -24,6 +24,7 @@ const app = createApp({
   db: fromPool(pool),
   storage: supabaseStorage({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
   videoTtl: Number(process.env.VIDEO_URL_TTL_SECONDS || 600),
+  deleteUser: supabaseUserDeleter({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),
   razorpay: process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? createRazorpay({ keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET }) : null,
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   verifyToken: supabaseVerifier({ url: need('SUPABASE_URL'), serviceKey: need('SUPABASE_SERVICE_ROLE_KEY') }),

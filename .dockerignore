@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.scratch
+e2e
+tests
+dev
+supabase
+test-results
+playwright-report

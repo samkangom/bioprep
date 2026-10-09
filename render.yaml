@@ -1,0 +1,21 @@
+# Render blueprint for the API. Secrets are set in the Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: bioprep-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DATABASE_URL, sync: false }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: RAZORPAY_KEY_ID, sync: false }
+      - { key: RAZORPAY_KEY_SECRET, sync: false }
+      - { key: RAZORPAY_WEBHOOK_SECRET, sync: false }
+      - { key: ALLOWED_ORIGINS, sync: false }
+      - { key: CLAUDE_MODEL, value: claude-haiku-5-5 }
+      - { key: CLAUDE_EFFORT, value: low }
+      - { key: TUTOR_DAILY_LIMIT, value: "60" }

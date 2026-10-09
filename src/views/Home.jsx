@@ -3,8 +3,8 @@ import { Icon, inr } from '../ui.jsx'
 import { FREE_EXPLANATIONS } from '../data'
 
 export default function Home() {
-  const { user, tests, questions, attempts, isUnlocked, freeLeft, go, setPaywall } = useApp()
-  const first = (user?.name || 'there').split(' ')[0]
+  const { user, tests, questions, attempts, isUnlocked, freeLeft, go, setPaywall, t } = useApp()
+  const first = (user?.name || '').split(' ')[0]
   const botany = questions.filter((q) => q.subject === 'Botany' && q.status === 'published').length
   const zoology = questions.filter((q) => q.subject === 'Zoology' && q.status === 'published').length
   const last = (id) => attempts.find((a) => a.testId === id)
@@ -12,61 +12,61 @@ export default function Home() {
   return (
     <div className="wrap stack" style={{ gap: 24 }}>
       <div className="stack" style={{ gap: 6 }}>
-        <span className="eyebrow">Your prep</span>
-        <h1>Hello, {first}</h1>
+        <span className="eyebrow">{t('home.eyebrow')}</span>
+        <h1>{t('home.hello', { name: first })}</h1>
       </div>
 
       <div className="banner">
         <span className="row" style={{ gap: 8 }}>
           <Icon n="bolt" />
           {freeLeft > 0
-            ? <span><b>Free plan:</b> {freeLeft} of {FREE_EXPLANATIONS} full explanations left. Each one includes the guided questions and the video.</span>
-            : <span><b>Free explanations used.</b> Unlock a test for {inr(100)} to open every solution and video in it.</span>}
+            ? <span>{t('home.freePlan', { left: freeLeft, total: FREE_EXPLANATIONS })}</span>
+            : <span>{t('home.freeUsed', { price: inr(100) })}</span>}
         </span>
       </div>
 
       <section className="stack" aria-label="Subjects">
-        <h2>Subjects</h2>
+        <h2>{t('home.subjects')}</h2>
         <div className="grid c3">
           <div className="card subject lift">
-            <div className="row between"><h3>Biology</h3><span className="pill primary">Live</span></div>
-            <p className="muted small">Class 11 and 12 NCERT, NEET pattern.</p>
+            <div className="row between"><h3>{t('home.biology')}</h3><span className="pill primary">{t('home.live')}</span></div>
+            <p className="muted small">{t('home.ncert')}</p>
             <div className="chips">
-              <span className="pill">Botany · {botany} questions</span>
-              <span className="pill">Zoology · {zoology} questions</span>
+              <span className="pill">{t('home.botany', { n: botany })}</span>
+              <span className="pill">{t('home.zoology', { n: zoology })}</span>
             </div>
           </div>
           {['Physics', 'Chemistry'].map((s) => (
             <div className="card subject locked" key={s}>
-              <div className="row between"><h3>{s}</h3><span className="pill accent"><Icon n="lock" s={14} />Coming soon</span></div>
-              <p className="muted small">We are building this next.</p>
-              <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={(e) => { e.currentTarget.textContent = 'We will let you know'; e.currentTarget.disabled = true }}>Notify me</button>
+              <div className="row between"><h3>{s}</h3><span className="pill accent"><Icon n="lock" s={14} />{t('home.comingSoon')}</span></div>
+              <p className="muted small">{t('home.building')}</p>
+              <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={(e) => { e.currentTarget.textContent = t('home.notified'); e.currentTarget.disabled = true }}>{t('home.notify')}</button>
             </div>
           ))}
         </div>
       </section>
 
       <section className="stack" aria-label="Tests">
-        <h2>Biology tests</h2>
+        <h2>{t('home.tests')}</h2>
         <div className="grid c3">
-          {tests.filter((t) => t.published).map((t) => {
-            const a = last(t.id)
-            const un = isUnlocked(t.id)
+          {tests.filter((x) => x.published).map((tt) => {
+            const a = last(tt.id)
+            const un = isUnlocked(tt.id)
             return (
-              <article className="card stack" key={t.id}>
+              <article className="card stack" key={tt.id}>
                 <div className="row between">
-                  <span className="pill">{t.kind}</span>
-                  {un ? <span className="pill good"><Icon n="check" s={14} />Solutions unlocked</span> : <span className="pill accent">{inr(t.price)} for solutions</span>}
+                  <span className="pill">{tt.kind}</span>
+                  {un ? <span className="pill good"><Icon n="check" s={14} />{t('home.unlocked')}</span> : <span className="pill accent">{t('home.forSolutions', { price: inr(tt.price) })}</span>}
                 </div>
-                <h3>{t.title}</h3>
+                <h3>{tt.title}</h3>
                 <div className="row muted small" style={{ gap: 14 }}>
-                  <span>{t.qids.length} questions</span><span className="row" style={{ gap: 4 }}><Icon n="clock" s={14} />{t.duration} min</span>
+                  <span>{t('home.questions', { n: tt.qids.length })}</span><span className="row" style={{ gap: 4 }}><Icon n="clock" s={14} />{t('home.minutes', { n: tt.duration })}</span>
                 </div>
-                {a && <p className="small">Last score: <b className="num">{a.score}/{a.max}</b></p>}
+                {a && <p className="small">{t('home.lastScore', { score: `${a.score}/${a.max}` })}</p>}
                 <div className="row" style={{ marginTop: 'auto' }}>
-                  <button className="btn primary" onClick={() => go('instructions', { testId: t.id })}>{a ? 'Retake test' : 'Start test'}</button>
-                  {a && <button className="btn" onClick={() => go('result', { attemptId: a.id })}>View result</button>}
-                  {!un && <button className="btn ghost sm" onClick={() => setPaywall(t.id)}>Unlock</button>}
+                  <button className="btn primary" onClick={() => go('instructions', { testId: tt.id })}>{a ? t('home.retake') : t('home.startTest')}</button>
+                  {a && <button className="btn" onClick={() => go('result', { attemptId: a.id })}>{t('home.viewResult')}</button>}
+                  {!un && <button className="btn ghost sm" onClick={() => setPaywall(tt.id)}>{t('home.unlock')}</button>}
                 </div>
               </article>
             )

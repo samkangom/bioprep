@@ -4,6 +4,7 @@ import { getSupabase } from '../lib/supabase'
 import { AppError } from '../errors'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config'
 import { validateVideo, validateImage, xhrUpload } from '../media'
+import { POLICY_VERSION } from '../privacy'
 
 const sb = () => getSupabase()
 const must = ({ data, error }) => {
@@ -13,9 +14,9 @@ const must = ({ data, error }) => {
 
 const toUser = (p) => p && ({
   id: p.id, phone: p.phone, name: p.name, year: p.exam_year ? String(p.exam_year) : '2027',
-  role: p.role, onboarded: p.onboarded, language: p.language,
+  role: p.role, onboarded: p.onboarded, language: p.language, isMinor: p.is_minor,
 })
-const PROFILE_COLS = 'id,role,name,phone,exam_year,language,onboarded'
+const PROFILE_COLS = 'id,role,name,phone,exam_year,language,onboarded,is_minor'
 async function loadProfile() {
   const { data: s } = await sb().auth.getSession()
   const uid = s.session?.user?.id
@@ -32,9 +33,18 @@ export const auth = {
     must(await sb().auth.verifyOtp({ phone: e164(phone), token, type: 'sms' }))
     return loadProfile()
   },
-  async completeProfile({ name, year }) {
-    must(await sb().rpc('complete_profile', { p_name: name.trim() || 'Student', p_exam_year: Number(year) || null }))
+  async completeProfile({ name, year, birthDate, consent, guardian }) {
+    must(await sb().rpc('complete_signup', {
+      p_name: name.trim(), p_exam_year: Number(year) || null, p_birth_date: birthDate, p_consent: !!consent, p_policy_version: POLICY_VERSION,
+      p_guardian_name: guardian?.name?.trim() || null, p_guardian_phone: guardian?.phone || null, p_relationship: guardian?.relationship || null,
+    }))
     return loadProfile()
+  },
+  async exportData() { const { api } = await import('../api'); return api('/api/me/export') },
+  async deleteAccount() {
+    const { api } = await import('../api')
+    await api('/api/me', { method: 'DELETE', body: { confirm: 'DELETE' } })
+    await sb().auth.signOut().catch(() => {})
   },
   async signOut() { await sb().auth.signOut() },
   onChange(cb) {

@@ -46,14 +46,20 @@ export const auth = {
     persist()
     return clone(s.user)
   },
-  async completeProfile({ name, year }) {
+  async completeProfile({ name, year, birthDate }) {
     const s = state()
-    s.user = { ...s.user, name: name.trim() || 'Student', year, onboarded: true }
+    const age = (Date.now() - new Date(birthDate).getTime()) / 31557600000
+    s.user = { ...s.user, name: name.trim() || 'Student', year, onboarded: true, isMinor: age < 18 }
     s.profiles[s.user.phone] = s.user
     persist()
     return clone(s.user)
   },
   async signOut() { state().user = null; persist() },
+  async exportData() { const s = state(); return { exported_at: new Date().toISOString(), note: 'Demo data stored in this browser only.', profile: s.user, attempts: s.attempts, unlocked_tests: s.unlocked, revision_list: s.revision } },
+  async deleteAccount() {
+    S = null
+    try { localStorage.removeItem(KEY) } catch { /* ignore */ }
+  },
   onChange() { return () => {} },
 }
 

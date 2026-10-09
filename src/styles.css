@@ -59,11 +59,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand { font-family: var(--serif); font-weight: 600; font-size: 22px; background: none; border: 0; cursor: pointer; padding: 6px 4px; display: flex; align-items: center; gap: 8px; }
 .brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--primary); color: var(--primary-ink); display: grid; place-items: center; font-size: 15px; }
 .seg { display: inline-flex; background: var(--surface2); border-radius: 10px; padding: 3px; }
-.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; min-height: 36px; color: var(--muted); }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; min-height: 44px; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--muted); min-height: 40px; }
 .toggle input { width: 18px; height: 18px; accent-color: var(--primary); }
-.icon-btn { background: none; border: 1px solid var(--line); border-radius: 10px; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; }
+.icon-btn { background: none; border: 1px solid var(--line); border-radius: 10px; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; }
 .icon-btn:hover { background: var(--surface2); }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--surface2); color: var(--ink); }
 .pill.accent { background: var(--accent-soft); color: var(--accent); }
@@ -83,7 +83,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :root[data-theme="dark"] .btn.accent { color: #1b1204; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.accent { color: #1b1204; } }
 .btn.ghost { background: none; border-color: transparent; }
-.btn.sm { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 .link { background: none; border: 0; padding: 0; color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: 500; }
 
@@ -236,7 +236,7 @@ td.q { min-width: 220px; max-width: 420px; }
 @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 .composer { display: flex; gap: 10px; align-items: flex-end; }
 .composer textarea { min-height: 52px; flex: 1; }
-.chip-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; min-height: 36px; padding: 0 14px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.chip-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; min-height: 44px; padding: 0 14px; cursor: pointer; font-size: 13px; font-weight: 500; }
 .chip-btn:hover:not([disabled]) { background: var(--surface2); }
 .chip-btn[disabled] { opacity: .5; cursor: not-allowed; }
 .feedback { border-radius: 12px; padding: 14px; background: var(--primary-soft); display: flex; flex-direction: column; gap: 6px; }
@@ -254,3 +254,10 @@ td.q { min-width: 220px; max-width: 420px; }
 .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--primary); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .err-text { color: var(--bad); display: flex; gap: 6px; align-items: flex-start; }
+
+/* consent / policy checkboxes and 44px link targets */
+.toggle.check { align-items: flex-start; font-size: 14px; color: var(--ink); min-height: 44px; }
+.toggle.check input { margin-top: 3px; flex: none; }
+.link { min-height: 44px; display: inline-flex; align-items: center; }
+.footer .link { padding: 0 2px; }
+.danger { border-color: var(--bad); color: var(--bad); }

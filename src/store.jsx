@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { FREE_EXPLANATIONS } from './data'
 import { backend, USE_MOCK } from './backend'
 import { legacyTheme } from './backend/mock'
 import { describeError } from './errors'
+import { makeT, initialLang, saveLang, LANGUAGES } from './i18n'
 
 const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
@@ -18,7 +19,8 @@ export function AppProvider({ children }) {
   const [bootError, setBootError] = useState('')
   const [theme, setThemeState] = useState(readTheme) // null = follow system
   const [fast, setFast] = useState(false) // demo speed (mock mode only): timers run 20x
-  const [route, setRoute] = useState({ name: 'home' })
+  const [route, setRoute] = useState(() => (window.location.hash === '#/privacy' ? { name: 'privacy' } : { name: 'home' }))
+  const [lang, setLangState] = useState(initialLang)
   const [data, setData] = useState(EMPTY)
   const [revealed, setRevealed] = useState({}) // questionId -> { index, letter, text } once the tutor session is finished
   const [paywall, setPaywall] = useState(null) // testId or null
@@ -43,8 +45,20 @@ export function AppProvider({ children }) {
 
   const go = useCallback((name, params = {}) => {
     setRoute({ name, ...params })
+    // Only the privacy policy has a shareable URL (it must be reachable before sign-in).
+    if (name === 'privacy') window.history.replaceState(null, '', '#/privacy')
+    else if (window.location.hash === '#/privacy') window.history.replaceState(null, '', window.location.pathname + window.location.search)
     window.scrollTo?.(0, 0)
   }, [])
+  useEffect(() => {
+    const onHash = () => { if (window.location.hash === '#/privacy') setRoute({ name: 'privacy' }) }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const setLang = (code) => { if (LANGUAGES.some((l) => l.code === code && l.ready)) { setLangState(code); saveLang(code) } }
+  const t = useMemo(() => makeT(lang), [lang])
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
 
   // ---- session ----
   const loadAll = useCallback(async (u) => { setData(await backend.data.loadAll(u)) }, [])
@@ -132,6 +146,12 @@ export function AppProvider({ children }) {
     try { await backend.data.setRevision(qid, on, userRef.current?.id) }
     catch (e) { patch({ revision: data.revision }); setToast(describeError(e)) }
   }
+  const exportData = () => backend.auth.exportData()
+  const deleteAccount = async () => {
+    await backend.auth.deleteAccount()
+    setUser(null); setRole('student'); setData(EMPTY); setRevealed({}); setPaywall(null); go('home')
+    setToast('Your account and data have been deleted.')
+  }
   const resetDemo = async () => {
     if (!USE_MOCK) return
     setData(await backend.data.reset())
@@ -140,6 +160,7 @@ export function AppProvider({ children }) {
   }
 
   const value = {
+    lang, setLang, t, exportData, deleteAccount,
     mock: USE_MOCK, media: backend.media, adminApi: backend.admin, boot, bootError, retryBoot: start,
     user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
     ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements, revealed, markRevealed,

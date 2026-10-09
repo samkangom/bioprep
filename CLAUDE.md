@@ -26,7 +26,14 @@ Work follows the 7-stage launch plan. Update this list in every stage.
 4. **DONE: videos.** Private `videos` bucket (mp4, 200 MB, staff-only RLS), public `diagrams` bucket (images, 5 MB). Admin `UploadField`: client validation (type, size, MP4 signature), real XHR progress bar, cancel, preview, orphan cleanup. `POST /api/video-url` signs a 10-minute URL only for a finished tutor session, or a paid/staff user ("Skip to video"); revoked unlocks stop it. The player fetches a fresh link if one expires.
 5. **DONE: payments (Razorpay, test mode first).** `POST /api/payments/order` (price from the DB, never the client), `POST /api/payments/webhook` (HMAC over the raw body, amount check, idempotent on event id, only path that inserts `unlocks`), `GET /api/payments/status/:orderId` (poll after Checkout). Student Payment history screen; admin Payments tab with refund flag (flag only; the refund is issued in Razorpay and `refund.processed` revokes the unlock). The Checkout success callback never unlocks. Set the webhook in the Razorpay dashboard: events `payment.captured`, `order.paid`, `payment.failed`, `refund.processed`.
 6. **DONE: admin.** CSV import (`src/csv.js`, `CsvImport.jsx`): preview, per-row errors, duplicates, everything lands as a draft, template download. Diagram upload with required alt text (`questions.image_alt`, public `diagrams` bucket). Real analytics from SQL (`admin_test_stats`, `admin_question_stats`, `admin_revenue`, `admin_overview`, `admin_users`): average score per test, hardest questions, time per question, revenue net of refunds. Users tab (masked phones, manual unlock, role change) and Payments tab are admin-only; teachers get content tools and content analytics. In mock mode analytics are computed from this browser's real attempts and labelled as such. Note: migrations were amended in place (`image_alt`) because nothing has been deployed yet; once applied to a real database, add new migrations instead.
-7. Quality and launch: loading/error states, 390px layout, Hindi/Manipuri scaffolding, Playwright e2e, privacy policy, delete my data, parental consent, deploy.
+7. **DONE in code: quality and launch** (needs your accounts to go live, see `docs/LAUNCH.md`). Loading/error states on boot, test start/submit, solutions, payments, admin lists; error boundary; layout and 44px tap targets verified at 390px by Playwright; i18n scaffolding (`src/i18n`: English source, Hindi first draft, empty Meiteilon; shell, sign-in and home converted); privacy policy page (`/#/privacy`); sign-up with date of birth, policy acceptance and guardian consent for under 18 (`complete_signup`; only birth year kept); Download my data / Delete my account and data (`/api/me`); retention job (`purge_old_data`); Playwright e2e (`npm run test:e2e`) covering sign in, test, submit, explanation, tutor session, paywall, test-mode payment via signed webhook, unlocked solution; Vercel, Dockerfile, Render blueprint, CI workflow, `.env.example`.
+
+## What is next
+- Do the steps in `docs/LAUNCH.md` (Supabase project, SMS provider, Razorpay test keys, Anthropic key, deploy) and the test-mode run.
+- Legal review of the privacy policy and guardian-consent method (consent is recorded, not verified).
+- Native review of Hindi; Meiteilon translation; wrap the remaining screens in `t()`.
+- Resumable video upload (tus) if 200 MB uploads on poor connections matter.
+- Physics and Chemistry (reuse the schema; `questions.subject` already allows them; turn on the cards in `Home.jsx`).
 
 ## Decisions made while building (revisit if you disagree)
 - `question_secrets` is a separate table because row-level security cannot hide columns. Everything a student must not see before the tutor session ends lives there or in `socratic_steps`.
@@ -39,8 +46,9 @@ Work follows the 7-stage launch plan. Update this list in every stage.
 - Colours only from CSS tokens in `src/styles.css`; support light and dark.
 - Real buttons and labels, 44px tap targets, visible focus. Never convey correct/incorrect by colour alone (icon + text).
 - Sample numbers in admin are labelled "Sample data". Do not invent real-looking stats.
+- Strings shown to students go through `t()` (`src/i18n/en.js` is the source). Add the key to English first.
 - Anything secret stays out of `VITE_*` variables. Student-facing tables get RLS; privileged writes go through SQL functions or the API.
 
 ## Commands
 - `npm install`, `npm run dev` (http://localhost:5173), `npm run build` (normal bundle in `dist/`), `npm run build:single` (single-file `dist/index.html`)
-- `npm test` (vitest: database/RLS tests with PGlite, backend integration tests), `npm run dev:stack` (local backend, see README)
+- `npm test` (vitest: database/RLS tests with PGlite, API tests, backend integration, unit tests), `npm run test:e2e` (Playwright, desktop and 390px; boots its own local stack), `npm run dev:stack` (local backend, see README)

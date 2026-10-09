@@ -5,6 +5,7 @@ import { rateLimiter } from './ratelimit.js'
 import { HttpError, openSession, runTurn, finishSession, revealExplanation, wrapUp } from './tutor.js'
 import { videoUrl } from './video.js'
 import { registerPayments, registerWebhook } from './payments.js'
+import { registerMe } from './me.js'
 import { TUTOR_DAILY_TURNS } from '../shared/rules.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -80,6 +81,7 @@ export function createApp(opts = {}) {
   }))
 
   registerPayments(app, ctx, { auth, limited, wrap, must, isUuid })
+  registerMe(app, ctx, { auth, limited, wrap })
 
   extra?.routes?.(app, ctx, { auth, limited, wrap, must, isUuid })
 
