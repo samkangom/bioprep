@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
-import { Icon, Modal, fmt } from '../ui.jsx'
+import { Icon, Modal, ErrorState, Loading, fmt } from '../ui.jsx'
+import { describeError } from '../errors'
 import { MARKS } from '../data'
 
 export function Instructions({ testId }) {
@@ -31,10 +32,32 @@ export function Instructions({ testId }) {
   )
 }
 
+// Gate: create the attempt on the server first (so the clock the server checks starts with ours), then run the test.
 export function TestRun({ testId }) {
-  const { tests, questions, fast, submitAttempt } = useApp()
+  const { tests, startAttempt, go } = useApp()
   const test = tests.find((t) => t.id === testId)
+  const [attemptId, setAttemptId] = useState(null)
+  const [err, setErr] = useState('')
+  const [tries, setTries] = useState(0)
+  useEffect(() => {
+    if (!test) return
+    let off = false
+    setErr('')
+    startAttempt(testId).then((id) => { if (!off) setAttemptId(id) }).catch((e) => { if (!off) setErr(describeError(e, 'We could not start the test.')) })
+    return () => { off = true }
+  }, [testId, tries]) // eslint-disable-line
+  if (!test) return <div className="wrap"><ErrorState message="That test is not available." onRetry={() => go('home')} retryLabel="Back to tests" /></div>
+  if (err) return <div className="wrap"><ErrorState message={err} onRetry={() => setTries((n) => n + 1)} /></div>
+  if (!attemptId) return <div className="wrap"><Loading label="Getting your test ready…" /></div>
+  return <Run test={test} attemptId={attemptId} />
+}
+
+function Run({ test, attemptId }) {
+  const { questions, fast, submitAttempt } = useApp()
+  const testId = test.id
   const qs = test.qids.map((id) => questions.find((q) => q.id === id)).filter(Boolean)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitErr, setSubmitErr] = useState('')
   const [i, setI] = useState(0)
   const [ans, setAns] = useState({})
   const [marked, setMarked] = useState({})
@@ -56,10 +79,18 @@ export function TestRun({ testId }) {
     return () => clearInterval(id)
   }, [fast])
 
-  const submit = () => {
+  // Answers stay in memory until the server confirms, so a dropped connection never loses the attempt.
+  const submit = async () => {
     if (done.current) return
     done.current = true
-    submitAttempt({ testId, answers: ans, times })
+    setSubmitting(true); setSubmitErr('')
+    try {
+      await submitAttempt({ testId, attemptId, answers: ans, times })
+    } catch (e) {
+      done.current = false
+      setSubmitErr(describeError(e, 'We could not submit your test.'))
+      setSubmitting(false); setConfirm(true)
+    }
   }
   useEffect(() => { if (left === 0) submit() }, [left]) // eslint-disable-line
 
@@ -120,6 +151,7 @@ export function TestRun({ testId }) {
           </aside>
         </div>
       </div>
+      {submitting && !confirm && <Modal title="Submitting your test" onClose={() => {}}><Loading label="Saving your answers…" /></Modal>}
       {confirm && (
         <Modal title="Submit test?" onClose={() => setConfirm(false)}>
           <div className="grid c3" style={{ gap: 8 }}>
@@ -128,7 +160,8 @@ export function TestRun({ testId }) {
             <div className="stat"><b className="num">{counts.marked}</b><span className="small muted">Marked</span></div>
           </div>
           <p className="muted small">{fmt(left)} left. You cannot change answers after submitting.</p>
-          <div className="row"><button className="btn primary" onClick={submit}>Submit now</button><button className="btn" onClick={() => setConfirm(false)}>Keep working</button></div>
+          {submitErr && <p role="alert" className="err-text"><Icon n="x" s={16} />{submitErr} Your answers are still here. Try again.</p>}
+          <div className="row"><button className="btn primary" onClick={submit} disabled={submitting}>{submitting ? 'Submitting…' : submitErr ? 'Try again' : 'Submit now'}</button><button className="btn" onClick={() => setConfirm(false)} disabled={submitting}>Keep working</button></div>
         </Modal>
       )}
     </>

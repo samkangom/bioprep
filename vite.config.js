@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
-// viteSingleFile inlines JS + CSS into dist/index.html so the whole prototype is one shareable file.
-// For a real deployment you can remove viteSingleFile() and deploy dist/ normally.
+// Default build is a normal multi-file bundle (what Vercel serves).
+// `npm run build:single` (SINGLE_FILE=1) inlines JS + CSS into one dist/index.html for sharing as a single file.
 export default defineConfig({
-  plugins: [react(), viteSingleFile()],
+  plugins: [react(), ...(process.env.SINGLE_FILE ? [viteSingleFile()] : [])],
+  test: {
+    include: ['tests/**/*.test.{js,jsx}', 'server/**/*.test.js'],
+    testTimeout: 30000,
+    hookTimeout: 60000,
+  },
 })

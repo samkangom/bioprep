@@ -85,3 +85,14 @@ export function Bars({ rows }) {
     </div>
   )
 }
+
+// ---- Loading / error states ----
+export const Loading = ({ label = 'Loading…' }) => (
+  <div className="state" role="status" aria-live="polite"><span className="spin" aria-hidden="true" />{label}</div>
+)
+export const ErrorState = ({ message, onRetry, retryLabel = 'Try again' }) => (
+  <div className="state err" role="alert">
+    <span className="row" style={{ gap: 8, justifyContent: 'center' }}><Icon n="x" />{message}</span>
+    {onRetry && <button className="btn sm" onClick={onRetry}>{retryLabel}</button>}
+  </div>
+)

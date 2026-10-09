@@ -1,33 +1,32 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { initialQuestions, initialTests, FREE_EXPLANATIONS, MARKS } from './data'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { FREE_EXPLANATIONS } from './data'
+import { backend, USE_MOCK } from './backend'
+import { legacyTheme } from './backend/mock'
+import { describeError } from './errors'
 
 const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
 
-const KEY = 'bioprep-demo-v1'
-const load = () => {
-  try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null }
-}
-const save = (s) => {
-  try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* storage may be blocked */ }
-}
-const stripBlob = (qs) => qs.map((q) => (q.video && q.video.startsWith('blob:') ? { ...q, video: null } : q))
+const THEME_KEY = 'bioprep-theme'
+const readTheme = () => { try { return localStorage.getItem(THEME_KEY) || legacyTheme() } catch { return null } }
+const EMPTY = { questions: [], tests: [], attempts: [], unlocked: [], freeUsed: [], revision: [] }
 
 export function AppProvider({ children }) {
-  const saved = useMemo(load, [])
-  const [user, setUser] = useState(saved?.user ?? null)
-  const [role, setRole] = useState('student')
-  const [theme, setTheme] = useState(saved?.theme ?? null) // null = follow system
-  const [fast, setFast] = useState(false) // demo speed: timers run 20x
+  const [user, setUser] = useState(null)
+  const [role, setRole] = useState('student') // which UI is showing. Staff can switch to the student view.
+  const [boot, setBoot] = useState('loading') // loading | ready | error
+  const [bootError, setBootError] = useState('')
+  const [theme, setThemeState] = useState(readTheme) // null = follow system
+  const [fast, setFast] = useState(false) // demo speed (mock mode only): timers run 20x
   const [route, setRoute] = useState({ name: 'home' })
-  const [questions, setQuestions] = useState(saved?.questions ?? initialQuestions)
-  const [tests, setTests] = useState(saved?.tests ?? initialTests)
-  const [unlocked, setUnlocked] = useState(saved?.unlocked ?? [])
-  const [freeUsed, setFreeUsed] = useState(saved?.freeUsed ?? [])
-  const [attempts, setAttempts] = useState(saved?.attempts ?? [])
-  const [revision, setRevision] = useState(saved?.revision ?? [])
+  const [data, setData] = useState(EMPTY)
   const [paywall, setPaywall] = useState(null) // testId or null
   const [toast, setToast] = useState(null)
+  const userRef = useRef(null)
+  userRef.current = user
+
+  const setTheme = (t) => { setThemeState(t); try { t ? localStorage.setItem(THEME_KEY, t) : localStorage.removeItem(THEME_KEY) } catch { /* ignore */ } }
+  const patch = (p) => setData((d) => ({ ...d, ...p }))
 
   useEffect(() => {
     const el = document.documentElement
@@ -36,12 +35,8 @@ export function AppProvider({ children }) {
   }, [theme])
 
   useEffect(() => {
-    save({ user, theme, questions: stripBlob(questions), tests, unlocked, freeUsed, attempts, revision })
-  }, [user, theme, questions, tests, unlocked, freeUsed, attempts, revision])
-
-  useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 2600)
+    const t = setTimeout(() => setToast(null), 3200)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -50,56 +45,93 @@ export function AppProvider({ children }) {
     window.scrollTo?.(0, 0)
   }, [])
 
-  const freeLeft = Math.max(0, FREE_EXPLANATIONS - freeUsed.length)
-  const isUnlocked = (testId) => unlocked.includes(testId)
-  const canExplain = (testId, qid) => isUnlocked(testId) || freeUsed.includes(qid) || freeUsed.length < FREE_EXPLANATIONS
-  // Call when a solution is opened. Registers a free explanation if needed.
-  const openExplanation = (testId, qid) => {
-    if (!canExplain(testId, qid)) return false
-    if (!isUnlocked(testId) && !freeUsed.includes(qid)) setFreeUsed((f) => [...f, qid])
-    return true
-  }
-  const unlockTest = (testId) => {
-    setUnlocked((u) => (u.includes(testId) ? u : [...u, testId]))
-    setToast('Test unlocked. Full solutions and videos are open.')
+  // ---- session ----
+  const loadAll = useCallback(async (u) => { setData(await backend.data.loadAll(u)) }, [])
+  const enter = useCallback(async (u) => {
+    setUser(u)
+    setRole(u.role === 'student' ? 'student' : 'admin')
+    if (u.onboarded) await loadAll(u)
+  }, [loadAll])
+
+  const start = useCallback(async () => {
+    setBoot('loading'); setBootError('')
+    try {
+      const u = await backend.auth.getUser()
+      if (u) await enter(u)
+      setBoot('ready')
+    } catch (e) {
+      setBootError(describeError(e, 'We could not load your data.')); setBoot('error')
+    }
+  }, [enter])
+  useEffect(() => {
+    start()
+    return backend.auth.onChange?.((u) => { if (!u && userRef.current) { setUser(null); setData(EMPTY); go('home') } })
+  }, [start, go])
+
+  const sendOtp = (phone) => backend.auth.sendOtp(phone)
+  const verifyOtp = async (phone, code) => { const u = await backend.auth.verifyOtp(phone, code); await enter(u); return u }
+  const demoLogin = async (r) => { const u = await backend.auth.demoLogin(r); await enter(u); go('home') }
+  const completeProfile = async (p) => { const u = await backend.auth.completeProfile(p); await enter(u); go('home'); return u }
+  const signOut = async () => {
+    try { await backend.auth.signOut() } catch { /* signing out locally anyway */ }
+    setUser(null); setRole('student'); setData(EMPTY); setPaywall(null); go('home')
   }
 
-  const submitAttempt = ({ testId, answers, times }) => {
-    const test = tests.find((t) => t.id === testId)
-    const qs = test.qids.map((id) => questions.find((q) => q.id === id)).filter(Boolean)
-    let correct = 0, wrong = 0
-    qs.forEach((q) => {
-      if (answers[q.id] === undefined) return
-      answers[q.id] === q.correct ? correct++ : wrong++
-    })
-    const attempt = {
-      id: 'a' + Date.now(), testId, answers, times, correct, wrong,
-      skipped: qs.length - correct - wrong,
-      score: correct * MARKS.correct + wrong * MARKS.wrong,
-      max: qs.length * MARKS.correct, at: Date.now(),
+  // ---- entitlement (UI hints only; the server is the authority in remote mode) ----
+  const freeLeft = Math.max(0, FREE_EXPLANATIONS - data.freeUsed.length)
+  const isUnlocked = (testId) => data.unlocked.includes(testId)
+  const canExplain = (testId, qid) => isUnlocked(testId) || data.freeUsed.includes(qid) || data.freeUsed.length < FREE_EXPLANATIONS
+  // Call when a solution is opened. Registers a free explanation if needed (mock mode; the API does this in remote mode).
+  const openExplanation = async (testId, qid) => {
+    if (!canExplain(testId, qid)) return false
+    if (USE_MOCK && !isUnlocked(testId) && !data.freeUsed.includes(qid)) {
+      await backend.data.registerFree(qid)
+      patch({ freeUsed: [...data.freeUsed, qid] })
     }
-    setAttempts((a) => [attempt, ...a])
+    return true
+  }
+  const unlockTest = async (testId) => {
+    if (!USE_MOCK) return // real unlocks arrive via the payment webhook
+    await backend.data.unlock(testId)
+    patch({ unlocked: data.unlocked.includes(testId) ? data.unlocked : [...data.unlocked, testId] })
+    setToast('Test unlocked. Full solutions and videos are open.')
+  }
+  const refreshEntitlements = async () => { if (userRef.current) await loadAll(userRef.current) }
+
+  // ---- attempts ----
+  const startAttempt = (testId) => backend.data.startAttempt(testId)
+  const submitAttempt = async ({ testId, attemptId, answers, times }) => {
+    const attempt = await backend.data.submitAttempt({ testId, attemptId, answers, times })
+    patch({ attempts: [attempt, ...data.attempts.filter((a) => a.id !== attempt.id)] })
     go('result', { attemptId: attempt.id })
     return attempt
   }
 
-  const upsertQuestion = (q) => setQuestions((qs) => (qs.some((x) => x.id === q.id) ? qs.map((x) => (x.id === q.id ? q : x)) : [...qs, q]))
-  const upsertTest = (t) => setTests((ts) => (ts.some((x) => x.id === t.id) ? ts.map((x) => (x.id === t.id ? t : x)) : [...ts, t]))
-  const toggleRevision = (qid) => setRevision((r) => (r.includes(qid) ? r.filter((x) => x !== qid) : [...r, qid]))
-  const signOut = () => { setUser(null); setRole('student'); go('home') }
-  const resetDemo = () => {
-    setUnlocked([]); setFreeUsed([]); setAttempts([]); setRevision([])
-    setQuestions(initialQuestions); setTests(initialTests)
+  // ---- admin ----
+  const refreshCatalog = async () => patch(await backend.data.refreshCatalog(userRef.current))
+  const upsertQuestion = async (q) => { await backend.data.upsertQuestion(q); await refreshCatalog() }
+  const upsertTest = async (t) => { await backend.data.upsertTest(t); await refreshCatalog() }
+  const getQuestionForEdit = (id) => backend.data.getQuestionForEdit(id)
+
+  const toggleRevision = async (qid) => {
+    const on = !data.revision.includes(qid)
+    patch({ revision: on ? [...data.revision, qid] : data.revision.filter((x) => x !== qid) })
+    try { await backend.data.setRevision(qid, on, userRef.current?.id) }
+    catch (e) { patch({ revision: data.revision }); setToast(describeError(e)) }
+  }
+  const resetDemo = async () => {
+    if (!USE_MOCK) return
+    setData(await backend.data.reset())
     setToast('Demo reset. Free plan restored: 2 explanations.')
     go('home')
   }
 
   const value = {
-    user, setUser, role, setRole, theme, setTheme, fast, setFast, route, go,
-    questions, tests, unlocked, freeUsed, freeLeft, attempts, revision,
-    isUnlocked, canExplain, openExplanation, unlockTest, submitAttempt,
-    upsertQuestion, upsertTest, toggleRevision, paywall, setPaywall, toast, setToast,
-    signOut, resetDemo,
+    mock: USE_MOCK, boot, bootError, retryBoot: start,
+    user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
+    ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements,
+    startAttempt, submitAttempt, upsertQuestion, upsertTest, getQuestionForEdit, refreshCatalog, toggleRevision,
+    paywall, setPaywall, toast, setToast, sendOtp, verifyOtp, demoLogin, completeProfile, signOut, resetDemo,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

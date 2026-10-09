@@ -247,3 +247,10 @@ td.q { min-width: 220px; max-width: 420px; }
 .choice:hover:not([disabled]) { border-color: var(--primary); background: var(--primary-soft); }
 .choice[disabled] { opacity: .5; cursor: not-allowed; }
 @media (max-width: 560px) { .choices { grid-template-columns: minmax(0, 1fr); } }
+
+/* loading + error states */
+.state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px 20px; text-align: center; color: var(--muted); }
+.state.err { color: var(--bad); }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.err-text { color: var(--bad); display: flex; gap: 6px; align-items: flex-start; }

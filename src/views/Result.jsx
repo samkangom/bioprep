@@ -7,7 +7,7 @@ export default function Result({ attemptId }) {
   if (!a) return <div className="wrap"><p>Result not found.</p></div>
   const test = tests.find((t) => t.id === a.testId)
   const qs = test.qids.map((id) => questions.find((q) => q.id === id)).filter(Boolean)
-  const state = (q) => (a.answers[q.id] === undefined ? 'skip' : a.answers[q.id] === q.correct ? 'right' : 'wrong')
+  const state = (q) => a.results?.[q.id] ?? (a.answers[q.id] === undefined ? 'skip' : a.answers[q.id] === q.correct ? 'right' : 'wrong')
   const attempted = a.correct + a.wrong
   const accuracy = attempted ? a.correct / attempted : 0
   const totalTime = Object.values(a.times).reduce((x, y) => x + y, 0)
@@ -100,7 +100,7 @@ export default function Result({ attemptId }) {
                   <td className="num">{n + 1}</td>
                   <td className="q">{q.text}<div className="muted small">{q.subject} · {q.chapter}</div></td>
                   <td>{mine === undefined ? '—' : `${'ABCD'[mine]}. ${q.options[mine]}`}</td>
-                  <td>{'ABCD'[q.correct]}. {q.options[q.correct]}</td>
+                  <td>{q.correct !== undefined ? `${'ABCD'[q.correct]}. ${q.options[q.correct]}` : <span className="muted small">Shown with the explanation</span>}</td>
                   <td>{s === 'right' ? <span className="pill good"><Icon n="check" s={14} />Correct</span> : s === 'wrong' ? <span className="pill bad"><Icon n="x" s={14} />Incorrect</span> : <span className="pill">Skipped</span>}</td>
                   <td><button className="btn sm" onClick={() => go('solution', { attemptId: a.id, qid: q.id })}>Explain</button></td>
                 </tr>

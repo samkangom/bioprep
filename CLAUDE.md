@@ -12,23 +12,35 @@ Clickable prototype. React 18 + Vite, no backend. State lives in `src/store.jsx`
 
 ## Layout
 - `src/views/` Auth, Home, TestFlow (Instructions + TestRun), Result, Solution (Socratic + Video), Paywall, Profile, Admin
-- `src/tutor.js` Claude Socratic tutor (prompts + calls) with a scripted keyword fallback. `server/` is the Claude proxy.
-- `src/ui.jsx` icons, modal, donut and bar charts. `src/styles.css` design tokens (light + dark).
+- `src/store.jsx` React context. Same action names as the prototype; every action goes through `src/backend/` (`mock.js` = offline localStorage, `remote.js` = Supabase). `USE_MOCK` in `src/config.js` picks one.
+- `shared/rules.js` product constants used by browser, API and tests (free explanations, marks, timer). `supabase/migrations/*.sql` is the source of truth for the database; `supabase/seed.sql` is generated from `src/data.js` (`npm run gen:seed`).
+- `dev/` local stack for development and tests only: PGlite (real Postgres + RLS) plus a small Supabase stand-in (`npm run dev:stack`). Never deploy it.
+- `src/tutor.js` + `server/`: Claude Socratic tutor (moves fully server-side in stage 2).
+- `src/ui.jsx` icons, modal, charts, loading and error states. `src/styles.css` design tokens (light + dark).
 
-## Next steps, in order
-1. **Backend + DB** (Supabase or Postgres + Node). Tables: users, questions, socratic_steps, tests, test_questions, attempts, attempt_answers, unlocks, free_explanation_uses. Replace the store actions with API calls and keep the same names.
-2. **Real auth**: phone OTP (e.g. Firebase/MSG91). Roles `student`, `teacher`, `admin` enforced server-side. Never trust the client for unlock checks.
-3. **Payments**: Razorpay (UPI + cards) for the Rs 100 per test unlock. Create an order on the server, verify the webhook, then insert into `unlocks`.
-4. **Video storage**: upload MP4s to object storage (S3/R2/Supabase Storage), save the URL in `questions.video`. Serve with signed URLs, and only after the server confirms the user may open that explanation.
-5. **Socratic tutor (Claude)**: DONE in the prototype. `src/tutor.js` builds the prompts and asks Claude for JSON `{verdict, reply, step, established, choices, done}` each turn, plus a wrap-up `{strength, gap, tip}`. In the published artifact it uses the page `sample` capability. Locally, `server/index.js` is a proxy that holds `ANTHROPIC_API_KEY` (set `VITE_API_URL`). **Before launch**: move prompt building to the server, send only `{questionId, messages}`, and look up the question and correct answer in the DB so secret answers never ship to the browser. Add auth and per-user quotas. The scripted keyword tutor stays as an offline fallback.
-6. **Admin**: CSV import (columns: subject, chapter, difficulty, question, optA..optD, correct, ncert, explanation, ask1, keys1, hint1, ask2, keys2, hint2), image upload for question diagrams, real analytics from `attempts`.
-7. **Localisation**: Hindi and Manipuri (language select in the header is a placeholder).
-8. **Physics and Chemistry**: reuse the same schema; add a `subject` filter. Turn on the cards in `Home.jsx`.
+## Status
+Work follows the 7-stage launch plan. Update this list in every stage.
+1. **DONE: database and auth.** Migrations for profiles, questions (+ `question_secrets`), socratic_steps, tests, test_questions, attempts, attempt_answers, unlocks, free_explanation_uses, revision_items. RLS: students read published questions/tests and their own attempts; only teachers/admins write questions and tests; students cannot read correct answers, explanations or Socratic prompts. Scoring in `submit_attempt`. Phone OTP login. Store runs on Supabase or the offline mock.
+2. NEXT: secure Claude tutor on the server (`/api/tutor/turn`, `/api/tutor/wrapup`), answer released only after the session finishes.
+3. Free vs paid rules on the server (API checks + RLS).
+4. Videos: private bucket, 200 MB upload with progress, signed URLs.
+5. Razorpay payments, webhook-only unlock, payment history, refund flag.
+6. Admin: CSV import, diagram upload, real analytics.
+7. Quality and launch: loading/error states, 390px layout, Hindi/Manipuri scaffolding, Playwright e2e, privacy policy, delete my data, parental consent, deploy.
+
+## Decisions made while building (revisit if you disagree)
+- `question_secrets` is a separate table because row-level security cannot hide columns. Everything a student must not see before the tutor session ends lives there or in `socratic_steps`.
+- Question "Marks" input removed from the admin form: scoring is fixed +4 / -1 / 0 (product rule).
+- In real mode the result review table does not show the correct option. It shows right/wrong/skipped (icon + text) and the answer appears with the explanation. Students can still see which of their picks were right, because that is the score.
+- Attempts are created by `start_attempt` and scored by `submit_attempt`. A submission up to 5 minutes after the test duration is accepted (slow networks); later ones are refused.
+- `node_modules/` was committed in the prototype; it is now untracked and git-ignored.
 
 ## Conventions
 - Colours only from CSS tokens in `src/styles.css`; support light and dark.
 - Real buttons and labels, 44px tap targets, visible focus. Never convey correct/incorrect by colour alone (icon + text).
 - Sample numbers in admin are labelled "Sample data". Do not invent real-looking stats.
+- Anything secret stays out of `VITE_*` variables. Student-facing tables get RLS; privileged writes go through SQL functions or the API.
 
 ## Commands
-- `npm install`, `npm run dev` (http://localhost:5173), `npm run build` (single-file `dist/index.html`)
+- `npm install`, `npm run dev` (http://localhost:5173), `npm run build` (normal bundle in `dist/`), `npm run build:single` (single-file `dist/index.html`)
+- `npm test` (vitest: database/RLS tests with PGlite, backend integration tests), `npm run dev:stack` (local backend, see README)

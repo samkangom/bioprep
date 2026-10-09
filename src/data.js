@@ -1,8 +1,6 @@
-// Seed data for the prototype. Replace with API calls (see CLAUDE.md).
-export const APP_NAME = 'BioPrep'
-export const UNLOCK_PRICE = 100 // Rs per test
-export const FREE_EXPLANATIONS = 2 // free plan: total full solutions (Socratic + video)
-export const MARKS = { correct: 4, wrong: -1 }
+// Seed data. Used by the offline mock backend and to generate supabase/seed.sql (npm run gen:seed).
+import { APP_NAME, UNLOCK_PRICE, FREE_EXPLANATIONS, MARKS } from '../shared/rules.js'
+export { APP_NAME, UNLOCK_PRICE, FREE_EXPLANATIONS, MARKS }
 
 const q = (o) => ({ difficulty: 'Medium', marks: 4, status: 'published', video: null, ...o })
 

@@ -15,6 +15,7 @@ export default function Solution({ attemptId, qid }) {
   const allowed = a && q ? canExplain(test.id, q.id) : false
 
   useEffect(() => { if (a && q) openExplanation(test.id, q.id) }, [qid]) // eslint-disable-line
+  if (a && q && q.correct === undefined) return <div className="wrap"><p>The secure tutor is not connected yet.</p></div>
 
   if (!a || !q) return <div className="wrap"><p>Solution not found.</p></div>
   const ids = test.qids

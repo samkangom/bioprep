@@ -1,0 +1,35 @@
+# Supabase CLI config (local development: `supabase start`). Hosted projects are configured in the dashboard.
+# Hand-written; if your CLI version rejects a key, run `supabase init` in a scratch folder and copy the diff.
+project_id = "bioprep"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[storage]
+enabled = true
+file_size_limit = "200MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_signup = true
+
+# Phone OTP. India needs a provider with DLT-registered SMS templates (Twilio Verify, MSG91 via a Send SMS hook, ...).
+# Configure the provider in the dashboard (Authentication > Providers > Phone) and keep secrets out of this file.
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+template = "Your BioPrep code is {{ .Code }}"
+max_frequency = "30s"

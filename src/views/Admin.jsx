@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { Bars, Icon, Modal, inr } from '../ui.jsx'
 import { sampleUsers, UNLOCK_PRICE } from '../data'
+import { describeError } from '../errors'
 
 const TABS = [
   ['dash', 'Dashboard', 'grid'],
@@ -65,8 +66,14 @@ function Dash({ go }) {
 }
 
 function Questions() {
-  const { questions, setToast } = useApp()
+  const { questions, setToast, getQuestionForEdit } = useApp()
   const [edit, setEdit] = useState(null)
+  const [opening, setOpening] = useState('')
+  const openEdit = async (q) => {
+    setOpening(q.id)
+    try { setEdit(await getQuestionForEdit(q.id)) } catch (e) { setToast(describeError(e, 'Could not open that question.')) }
+    setOpening('')
+  }
   const [subject, setSubject] = useState('All')
   const [status, setStatus] = useState('All')
   const [term, setTerm] = useState('')
@@ -89,7 +96,7 @@ function Questions() {
               <td className="q">{q.text}</td><td>{q.subject}</td><td>{q.chapter}</td><td>{q.difficulty}</td>
               <td>{q.video ? <span className="pill good">Uploaded</span> : <span className="pill">Placeholder</span>}</td>
               <td><span className={'pill ' + (q.status === 'published' ? 'primary' : 'accent')}>{q.status}</span></td>
-              <td><button className="btn sm" onClick={() => setEdit(q)}>Edit</button></td>
+              <td><button className="btn sm" disabled={opening === q.id} onClick={() => openEdit(q)}>{opening === q.id ? 'Opening…' : 'Edit'}</button></td>
             </tr>
           ))}</tbody>
         </table></div>
@@ -100,7 +107,7 @@ function Questions() {
 }
 
 const blank = () => ({
-  id: 'q' + Date.now(), subject: 'Botany', chapter: '', difficulty: 'Medium', text: '', options: ['', '', '', ''], correct: 0, marks: 4,
+  id: crypto.randomUUID(), subject: 'Botany', chapter: '', difficulty: 'Medium', text: '', options: ['', '', '', ''], correct: 0,
   ncert: '', explanation: '', whyWrong: ['', '', '', ''], recap: { concept: '', mistake: '' }, caption: '', video: null, status: 'draft',
   socratic: [{ ask: '', keys: [], hint: '', good: '', sample: '' }, { ask: '', keys: [], hint: '', good: '', sample: '' }],
 })
@@ -110,6 +117,7 @@ function QuestionForm({ initial, onClose }) {
   const [q, setQ] = useState(() => structuredClone(initial || blank()))
   const [prog, setProg] = useState(initial?.video ? 100 : 0)
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
   const set = (k, v) => setQ((x) => ({ ...x, [k]: v }))
   const setOpt = (i, v) => set('options', q.options.map((o, n) => (n === i ? v : o)))
   const setStep = (i, k, v) => set('socratic', q.socratic.map((s, n) => (n === i ? { ...s, [k]: v } : s)))
@@ -121,16 +129,22 @@ function QuestionForm({ initial, onClose }) {
     let p = 0
     const id = setInterval(() => { p += 20; setProg(Math.min(100, p)); if (p >= 100) clearInterval(id) }, 150)
   }
-  const save = (status) => {
+  const save = async (status) => {
     if (!q.text.trim() || q.options.some((o) => !o.trim())) return setErr('Add the question text and all four options.')
     if (status === 'published' && q.socratic.some((s) => !s.ask.trim())) return setErr('Add the guiding questions before publishing.')
     const steps = q.socratic.filter((s) => s.ask.trim()).map((s) => ({
       ...s, keys: Array.isArray(s.keys) ? s.keys : String(s.keys).split(',').map((k) => k.trim()).filter(Boolean),
       sample: s.sample || (String(s.keys).split(',')[0] || '').trim(), good: s.good || 'Right.', hint: s.hint || 'Think about the basics.',
     }))
-    upsertQuestion({ ...q, socratic: steps, status, explanation: q.explanation || 'Explanation to be added.', caption: q.caption || '', recap: { concept: q.recap.concept || '', mistake: q.recap.mistake || '' } })
-    setToast(status === 'published' ? 'Question published.' : 'Draft saved.')
-    onClose()
+    setBusy(true); setErr('')
+    try {
+      await upsertQuestion({ ...q, socratic: steps, status, explanation: q.explanation || (status === 'draft' ? '' : 'Explanation to be added.'), caption: q.caption || '', recap: { concept: q.recap?.concept || '', mistake: q.recap?.mistake || '' } })
+      setToast(status === 'published' ? 'Question published.' : 'Draft saved.')
+      onClose()
+    } catch (e) {
+      setErr(describeError(e, 'Could not save the question.'))
+      setBusy(false)
+    }
   }
   const keysText = (s) => (Array.isArray(s.keys) ? s.keys.join(', ') : s.keys)
 
@@ -153,10 +167,7 @@ function QuestionForm({ initial, onClose }) {
             </div>
           ))}
         </fieldset>
-        <div className="grid c2">
-          <div className="field"><label htmlFor="f-nc">NCERT reference</label><input id="f-nc" className="input" value={q.ncert} placeholder="Class 11 · Chapter name" onChange={(e) => set('ncert', e.target.value)} /></div>
-          <div className="field"><label htmlFor="f-mk">Marks</label><input id="f-mk" className="input" type="number" value={q.marks} onChange={(e) => set('marks', +e.target.value)} /></div>
-        </div>
+        <div className="field"><label htmlFor="f-nc">NCERT reference</label><input id="f-nc" className="input" value={q.ncert} placeholder="Class 11 · Chapter name" onChange={(e) => set('ncert', e.target.value)} /></div>
         <div className="field"><label htmlFor="f-ex">Written explanation</label><textarea id="f-ex" className="input" value={q.explanation} onChange={(e) => set('explanation', e.target.value)} /></div>
 
         <div className="stack">
@@ -185,14 +196,14 @@ function QuestionForm({ initial, onClose }) {
         </div>
 
         {err && <p role="alert" style={{ color: 'var(--bad)' }}>{err}</p>}
-        <div className="row"><button className="btn primary" onClick={() => save('published')}>Publish</button><button className="btn" onClick={() => save('draft')}>Save draft</button><button className="btn ghost" onClick={onClose}>Cancel</button></div>
+        <div className="row"><button className="btn primary" disabled={busy} onClick={() => save('published')}>{busy ? 'Saving…' : 'Publish'}</button><button className="btn" disabled={busy} onClick={() => save('draft')}>Save draft</button><button className="btn ghost" disabled={busy} onClick={onClose}>Cancel</button></div>
       </div>
     </Modal>
   )
 }
 
 function Tests() {
-  const { tests, upsertTest } = useApp()
+  const { tests, upsertTest, setToast } = useApp()
   const [edit, setEdit] = useState(null)
   return (
     <>
@@ -203,7 +214,7 @@ function Tests() {
           <tr key={t.id}>
             <td><b>{t.title}</b><div className="muted small">{t.kind}</div></td>
             <td className="num">{t.qids.length}</td><td className="num">{t.duration} min</td><td className="num">{inr(t.price)}</td>
-            <td><span className="switch"><input type="checkbox" checked={t.published} onChange={(e) => upsertTest({ ...t, published: e.target.checked })} aria-label={`Publish ${t.title}`} /></span></td>
+            <td><span className="switch"><input type="checkbox" checked={t.published} onChange={(e) => upsertTest({ ...t, published: e.target.checked }).catch((er) => setToast(describeError(er, 'Could not change the publish state.')))} aria-label={`Publish ${t.title}`} /></span></td>
             <td><button className="btn sm" onClick={() => setEdit(t)}>Edit</button></td>
           </tr>
         ))}</tbody>
@@ -215,14 +226,16 @@ function Tests() {
 
 function TestForm({ initial, onClose }) {
   const { questions, upsertTest, setToast } = useApp()
-  const [t, setT] = useState(() => initial || { id: 't' + Date.now(), title: '', kind: 'Custom', qids: [], duration: 10, price: UNLOCK_PRICE, published: false })
+  const [t, setT] = useState(() => initial || { id: crypto.randomUUID(), title: '', kind: 'Custom', qids: [], duration: 10, price: UNLOCK_PRICE, published: false })
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
   const pool = questions.filter((q) => q.status === 'published')
   const toggle = (id) => setT((x) => ({ ...x, qids: x.qids.includes(id) ? x.qids.filter((i) => i !== id) : [...x.qids, id] }))
   const move = (i, d) => setT((x) => { const a = [...x.qids]; const j = i + d; if (j < 0 || j >= a.length) return x; [a[i], a[j]] = [a[j], a[i]]; return { ...x, qids: a } })
-  const save = () => {
+  const save = async () => {
     if (!t.title.trim() || t.qids.length === 0) return setErr('Give the test a name and pick at least one question.')
-    upsertTest(t); setToast('Test saved.'); onClose()
+    setBusy(true); setErr('')
+    try { await upsertTest(t); setToast('Test saved.'); onClose() } catch (e) { setErr(describeError(e, 'Could not save the test.')); setBusy(false) }
   }
   return (
     <Modal wide title={initial ? 'Edit test' : 'Build a test'} onClose={onClose}>
@@ -257,7 +270,7 @@ function TestForm({ initial, onClose }) {
           </div>
         </div>
         {err && <p role="alert" style={{ color: 'var(--bad)' }}>{err}</p>}
-        <div className="row"><button className="btn primary" onClick={save}>Save test</button><button className="btn ghost" onClick={onClose}>Cancel</button></div>
+        <div className="row"><button className="btn primary" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save test'}</button><button className="btn ghost" onClick={onClose} disabled={busy}>Cancel</button></div>
       </div>
     </Modal>
   )
