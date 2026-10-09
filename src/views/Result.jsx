@@ -2,7 +2,7 @@ import { useApp } from '../store.jsx'
 import { Bars, Donut, Icon, fmt } from '../ui.jsx'
 
 export default function Result({ attemptId }) {
-  const { attempts, tests, questions, go, isUnlocked, setPaywall, freeLeft } = useApp()
+  const { attempts, tests, questions, go, isUnlocked, setPaywall, freeLeft, revealed } = useApp()
   const a = attempts.find((x) => x.id === attemptId)
   if (!a) return <div className="wrap"><p>Result not found.</p></div>
   const test = tests.find((t) => t.id === a.testId)
@@ -100,7 +100,7 @@ export default function Result({ attemptId }) {
                   <td className="num">{n + 1}</td>
                   <td className="q">{q.text}<div className="muted small">{q.subject} · {q.chapter}</div></td>
                   <td>{mine === undefined ? '—' : `${'ABCD'[mine]}. ${q.options[mine]}`}</td>
-                  <td>{q.correct !== undefined ? `${'ABCD'[q.correct]}. ${q.options[q.correct]}` : <span className="muted small">Shown with the explanation</span>}</td>
+                  <td>{revealed[q.id] ? `${revealed[q.id].letter}. ${revealed[q.id].text}` : <span className="muted small">Shown with the explanation</span>}</td>
                   <td>{s === 'right' ? <span className="pill good"><Icon n="check" s={14} />Correct</span> : s === 'wrong' ? <span className="pill bad"><Icon n="x" s={14} />Incorrect</span> : <span className="pill">Skipped</span>}</td>
                   <td><button className="btn sm" onClick={() => go('solution', { attemptId: a.id, qid: q.id })}>Explain</button></td>
                 </tr>

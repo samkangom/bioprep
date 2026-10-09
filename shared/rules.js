@@ -8,3 +8,4 @@ export const TUTOR_SECONDS = 120 // attempt timer per question
 export const TUTOR_MAX_TURNS = 5 // the tutor wraps up at student message 5 at the latest
 export const MAX_HINTS = 3
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+export const TUTOR_DAILY_TURNS = 60 // default per-student limit on Claude turns per rolling 24 hours (env TUTOR_DAILY_LIMIT)

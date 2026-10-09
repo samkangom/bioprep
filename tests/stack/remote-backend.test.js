@@ -4,7 +4,7 @@ import { startStack, DEV_OTP, DEV_ADMIN_PHONE } from '../../dev/stack.js'
 
 let stack, auth, data
 beforeAll(async () => {
-  stack = await startStack({ shimPort: 0 })
+  stack = await startStack({ shimPort: 0, apiPort: 0 })
   vi.stubEnv('VITE_SUPABASE_URL', stack.supabaseUrl)
   vi.stubEnv('VITE_SUPABASE_ANON_KEY', stack.anonKey)
   vi.stubEnv('VITE_USE_MOCK', '0')

@@ -33,9 +33,15 @@ npm run dev                  # sign in with any 6-9xxxxxxxxx number, code 123456
 `supabase/seed.sql` once, and set `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. Enable the Phone provider and an SMS provider in
 the dashboard. Make your first admin in the SQL editor: `update profiles set role = 'admin' where phone = '91XXXXXXXXXX';`
 
-## Claude-powered Socratic tutor locally
+## Claude tutor
+The tutor runs on the API (`server/`). The browser sends `{questionId, messages, kind, hintLevel}`; the server loads the question,
+correct answer and secret prompts from the database, builds the prompt (`shared/tutor-core.js`), calls Claude, validates the JSON and
+returns only `{verdict, reply, step, established, choices, done}`. The answer and explanation come from `GET /api/explain/:questionId`,
+and only after the server has marked the session finished (guided questions done, 2:00 timer over, or "Show me the answer").
+Without `ANTHROPIC_API_KEY`, or when Claude fails or hits the daily limit, the scripted keyword tutor answers instead.
+
 ```bash
-cd server && npm install && ANTHROPIC_API_KEY=sk-ant-... npm start   # :8787
-cd .. && cp .env.example .env.local && npm run dev
+npm run dev:stack            # starts the database, auth stand-in and the API on :8787 (scripted tutor)
+ANTHROPIC_API_KEY=sk-ant-... npm run dev:stack   # same, with Claude (Haiku 5.5 by default)
 ```
-Without `VITE_API_URL` the app uses the built-in scripted tutor.
+Production API: set the variables in `.env.example` (API section) and run `npm run api`.

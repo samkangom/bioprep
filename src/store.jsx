@@ -20,6 +20,7 @@ export function AppProvider({ children }) {
   const [fast, setFast] = useState(false) // demo speed (mock mode only): timers run 20x
   const [route, setRoute] = useState({ name: 'home' })
   const [data, setData] = useState(EMPTY)
+  const [revealed, setRevealed] = useState({}) // questionId -> { index, letter, text } once the tutor session is finished
   const [paywall, setPaywall] = useState(null) // testId or null
   const [toast, setToast] = useState(null)
   const userRef = useRef(null)
@@ -74,7 +75,7 @@ export function AppProvider({ children }) {
   const completeProfile = async (p) => { const u = await backend.auth.completeProfile(p); await enter(u); go('home'); return u }
   const signOut = async () => {
     try { await backend.auth.signOut() } catch { /* signing out locally anyway */ }
-    setUser(null); setRole('student'); setData(EMPTY); setPaywall(null); go('home')
+    setUser(null); setRole('student'); setData(EMPTY); setRevealed({}); setPaywall(null); go('home')
   }
 
   // ---- entitlement (UI hints only; the server is the authority in remote mode) ----
@@ -96,6 +97,7 @@ export function AppProvider({ children }) {
     patch({ unlocked: data.unlocked.includes(testId) ? data.unlocked : [...data.unlocked, testId] })
     setToast('Test unlocked. Full solutions and videos are open.')
   }
+  const markRevealed = (qid, answer) => setRevealed((r) => (r[qid] ? r : { ...r, [qid]: answer }))
   const refreshEntitlements = async () => { if (userRef.current) await loadAll(userRef.current) }
 
   // ---- attempts ----
@@ -129,7 +131,7 @@ export function AppProvider({ children }) {
   const value = {
     mock: USE_MOCK, boot, bootError, retryBoot: start,
     user, role, setRole, theme, setTheme, fast: USE_MOCK && fast, setFast, route, go,
-    ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements,
+    ...data, freeLeft, isUnlocked, canExplain, openExplanation, unlockTest, refreshEntitlements, revealed, markRevealed,
     startAttempt, submitAttempt, upsertQuestion, upsertTest, getQuestionForEdit, refreshCatalog, toggleRevision,
     paywall, setPaywall, toast, setToast, sendOtp, verifyOtp, demoLogin, completeProfile, signOut, resetDemo,
   }

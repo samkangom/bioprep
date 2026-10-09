@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { bootDb, asRole, addUser } from '../../dev/pg.js'
 import { buildSeed } from '../../scripts/gen-seed.mjs'
-import { FREE_EXPLANATIONS } from '../../shared/rules.js'
+import { FREE_EXPLANATIONS, TUTOR_SECONDS } from '../../shared/rules.js'
 import fs from 'node:fs'
 
 let db, student, student2, teacher, admin
@@ -38,6 +38,7 @@ describe('migrations and seed', () => {
   it('keeps the free-explanation limit in sync with shared/rules.js', async () => {
     const { rows } = await db.query('select private.free_explanation_limit() n')
     expect(rows[0].n).toBe(FREE_EXPLANATIONS)
+    expect((await db.query('select private.tutor_seconds() n')).rows[0].n).toBe(TUTOR_SECONDS)
   })
 })
 
