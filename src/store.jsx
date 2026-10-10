@@ -46,8 +46,10 @@ export function AppProvider({ children }) {
   const go = useCallback((name, params = {}) => {
     setRoute({ name, ...params })
     // Only the privacy policy has a shareable URL (it must be reachable before sign-in).
-    if (name === 'privacy') window.history.replaceState(null, '', '#/privacy')
-    else if (window.location.hash === '#/privacy') window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    try {
+      if (name === 'privacy') window.history.replaceState(null, '', '#/privacy')
+      else if (window.location.hash === '#/privacy') window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    } catch { /* sandboxed frames may forbid URL changes; the page still switches */ }
     window.scrollTo?.(0, 0)
   }, [])
   useEffect(() => {
