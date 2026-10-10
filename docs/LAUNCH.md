@@ -60,3 +60,8 @@ Then delete the test account from Profile > Privacy and confirm the data is gone
 - Guardian consent is recorded, not verified (see step 6).
 - Rate limiting for bursts is per API instance.
 - `dev/` (PGlite + Supabase stand-in) is for development and tests only. Do not deploy it.
+
+## Setting up from a phone (no terminal)
+Everything except step 1.2 is a website. Instead of `supabase db push`, open the Supabase dashboard > SQL Editor, paste the whole of
+`supabase/setup-all.sql` (open it on GitHub, tap Raw, select all, copy), and Run it once on the new project. Then paste `supabase/seed.sql`
+and Run it for the sample questions (skip it if you will only use your own). If Supabase reports an error, send the message to Claude.
