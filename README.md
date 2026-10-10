@@ -1,12 +1,17 @@
-# BioPrep: NEET Biology prototype
+# BioPrep: NEET Biology test prep
 
 ```bash
 npm install
-npm run dev      # open http://localhost:5173
-npm run build    # dist/index.html, one self-contained file
+npm run dev           # open http://localhost:5173 (offline demo until you configure Supabase, see below)
+npm run build         # normal bundle in dist/ (what Vercel serves)
+npm run build:single  # dist/index.html as one self-contained file, for sharing the offline demo
+npm test              # unit, database and API tests
+npm run test:e2e      # browser tests (desktop and 390px)
 ```
 
-## Try it
+Going live? Follow `docs/LAUNCH.md`.
+
+## Try the offline demo
 1. Sign in with any 10-digit number and any 4-digit code, or use "Skip as student".
 2. Turn on **Demo speed ×20** in the header so timers run fast.
 3. Start *Biology Mock 1*, answer a few questions, submit (or let the timer end).
@@ -17,7 +22,7 @@ npm run build    # dist/index.html, one self-contained file
 Uploaded videos last for the browser session only. Everything else is saved in localStorage.
 That is the offline **mock mode**: it is what you get when no Supabase variables are set (or `VITE_USE_MOCK=1`).
 
-See `CLAUDE.md` for product rules and the build-out plan to use with Claude Code.
+See `CLAUDE.md` for product rules, what is done and what is next.
 
 ## Real mode: Supabase
 Everything real (accounts, scoring, entitlement) lives in `supabase/migrations/`. Scoring runs in SQL, and students cannot read
