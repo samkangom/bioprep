@@ -1,0 +1,317 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BioPrep Product Specification and Builder Guide</title><style>
+@page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+:root { --ink:#17241d; --muted:#53635a; --line:#d5ded8; --green:#1f5c45; --soft:#eaf2ed; --amber:#8a5a00; }
+* { box-sizing: border-box; }
+html { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 9.6pt; line-height: 1.5; color: var(--ink); }
+body { margin: 0; }
+h1,h2,h3,h4 { font-family: "DejaVu Serif", Georgia, serif; line-height: 1.2; margin: 0; }
+h2 { font-size: 17pt; margin: 22pt 0 8pt; color: var(--green); break-after: avoid; }
+h2.part { font-size: 21pt; margin-top: 18pt; padding-top: 10pt; border-top: 4px solid var(--green); break-before: page; }
+h2.part.first { break-before: auto; }
+h3 { font-size: 12.5pt; margin: 16pt 0 6pt; break-after: avoid; }
+h4 { font-size: 10.5pt; margin: 0; }
+p { margin: 0 0 7pt; }
+ul, ol { margin: 4pt 0 7pt; padding-left: 15pt; } li { margin: 2pt 0; }
+b { font-weight: 700; }
+.cover { min-height: 235mm; display: flex; flex-direction: column; justify-content: center; gap: 10pt; break-after: page; }
+.cover .mark { width: 54pt; height: 54pt; border-radius: 12pt; background: var(--green); color: #fff; font: 700 30pt "DejaVu Serif", serif; display:flex; align-items:center; justify-content:center; }
+.cover .kicker { text-transform: uppercase; letter-spacing: .12em; font-size: 9pt; color: var(--muted); margin-top: 8pt; }
+.cover h1 { font-size: 46pt; color: var(--green); }
+.cover .tag { font-size: 14pt; max-width: 135mm; line-height: 1.4; }
+.cover .meta { margin-top: 24pt; border-top: 1px solid var(--line); }
+.cover .meta div { padding: 6pt 0; border-bottom: 1px solid var(--line); font-size: 9.5pt; }
+.cover .meta span { display:inline-block; width: 70pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 7.5pt; vertical-align: top; }
+table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 8.6pt; break-inside: auto; }
+table.narrow { width: 75%; }
+th { text-align: left; background: var(--soft); color: var(--green); font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; }
+th, td { padding: 4.5pt 6pt; border: 1px solid var(--line); vertical-align: top; }
+tr { break-inside: avoid; }
+.story { border: 1px solid var(--line); border-left: 3pt solid var(--green); border-radius: 4pt; padding: 7pt 10pt 8pt; margin: 8pt 0; break-inside: avoid; }
+.sh { display:flex; align-items: baseline; gap: 8pt; margin-bottom: 3pt; }
+.sid { font: 700 8pt "DejaVu Sans Mono", monospace; background: var(--soft); color: var(--green); padding: 1pt 5pt; border-radius: 3pt; white-space: nowrap; }
+.us { margin: 2pt 0 5pt; font-style: italic; }
+.us b { font-style: normal; color: var(--green); }
+.lab { font-size: 7.6pt; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 1pt; }
+.ac ul { margin-top: 1pt; margin-bottom: 4pt; }
+.bn { background: #fbf6ea; border: 1px solid #ecdcae; border-radius: 3pt; padding: 4pt 7pt; font-size: 8.5pt; color: #4a3a0c; }
+.bn b { color: var(--amber); }
+.arch { width: 100%; height: auto; margin: 4pt 0; border: 1px solid var(--line); border-radius: 4pt; background: #fff; }
+.cap { font-size: 8pt; color: var(--muted); }
+.flow li { margin: 3pt 0; }
+</style></head><body><section class="cover">
+<div class="mark">B</div>
+<div class="kicker">Product specification and builder guide</div>
+<h1>BioPrep</h1>
+<p class="tag">NEET (UG) Biology test preparation: timed mock tests, and solutions that make students think before they are told.</p>
+<div class="meta">
+<div><span>Version</span>1.0 (built state, 23 October 2026)</div>
+<div><span>Source</span>GitHub samkangom/bioprep, branch claude/quirky-franklin-3k5blt, commit 3645a1e</div>
+<div><span>Audience</span>Product owner, builders (frontend, backend, database), testers, reviewers</div>
+<div><span>Status</span>All features below are built and tested locally. Nothing has been run against real Supabase, Razorpay, Anthropic, Vercel or Render accounts yet.</div>
+</div>
+</section>
+<h2>How to read this document</h2>
+<p><b>Part 1</b> says what the product is, who uses it, and the rules that do not change. <b>Part 2</b> describes every feature as user stories, each with acceptance criteria (the checks that prove it works) and a note for builders on where it lives and what to be careful about. <b>Part 3</b> is the builder guide: architecture, data, security, API, configuration, testing and deployment. <b>Part 4</b> lists decisions, limits and what is next.</p>
+<p>Story IDs (for example <span class="sid">PAY-3</span>) are stable. Use them in tickets and test names.</p>
+<h2 class="part first">Part 1. Product</h2>
+<h3>1.1 What BioPrep is</h3>
+<p>BioPrep helps Indian students preparing for NEET (UG) practise Biology. A student takes a timed mock test that is scored like the real exam (+4 for a correct answer, -1 for a wrong one, 0 for a skipped one). Afterwards the student opens a <b>solution</b>. Instead of showing the answer straight away, a tutor asks two or three short guiding questions so the student reasons it out first. Only when the student has finished, or the 2:00 timer ends, or the student asks, do they see the answer, the written explanation and a video.</p>
+<p>The business model is simple: a free plan gives <b>2 full explanations in total</b>. After that, <b>Rs 100 per test</b> unlocks every solution and video in that test, forever.</p>
+
+<h3>1.2 Who uses it</h3>
+<table class=""><thead><tr><th>Person</th><th>Goal</th><th>What they can do</th></tr></thead><tbody><tr><td><b>Student</b> (many are under 18)</td><td>Practise, find weak chapters, understand mistakes.</td><td>Sign in with a phone number, take tests, read results, open solutions, pay to unlock a test, see payment history, download or delete their data.</td></tr><tr><td><b>Parent or guardian</b> (indirect)</td><td>Agree to a minor using the service.</td><td>Gives consent during the student's sign-up (name, mobile, relationship, a tick). They do not have their own login.</td></tr><tr><td><b>Teacher</b></td><td>Build the question bank and tests.</td><td>Everything content-related: questions, diagrams, videos, tests, content analytics. Cannot see money or the user list.</td></tr><tr><td><b>Admin</b></td><td>Run the business.</td><td>Everything a teacher can, plus users and roles, payments, refund flags, revenue, manual unlocks.</td></tr><tr><td><b>Builder</b></td><td>Extend and operate the system.</td><td>Uses this document, the repository and the test suites.</td></tr></tbody></table>
+<h3>1.3 Rules that must not change without the owner's approval</h3>
+<table class=""><thead><tr><th>Rule</th><th>Value</th><th>Where it is defined</th></tr></thead><tbody><tr><td>Subjects live</td><td>Biology (Botany and Zoology). Physics and Chemistry show as Coming soon.</td><td>src/views/Home.jsx</td></tr><tr><td>Marking</td><td>+4 correct, -1 wrong, 0 skipped. Fixed for every question.</td><td>shared/rules.js and SQL submit_attempt</td></tr><tr><td>Free plan</td><td>2 full explanations in total (tutor session plus video), across all tests.</td><td>shared/rules.js, SQL free_explanation_limit()</td></tr><tr><td>Price</td><td>Rs 100 per test, one time, unlocks all solutions and videos in that test.</td><td>tests.price_inr (default 100)</td></tr><tr><td>Tutor timer</td><td>2:00 per question. Video unlocks after the guided questions finish, the timer ends, or the student taps Show me the answer. Paid students also get Skip to video.</td><td>shared/rules.js, server/tutor.js</td></tr><tr><td>Test</td><td>Timed, question palette, mark for review, auto-submit at 00:00.</td><td>src/views/TestFlow.jsx</td></tr><tr><td>Roles</td><td>student, teacher, admin. Enforced on the server, never only in the screen.</td><td>SQL profiles.role and RLS</td></tr></tbody></table>
+<h2 class="part">Part 2. Features as user stories</h2>
+<p>Each story follows: <i>As a [person], I want [action], so that [benefit]</i>. Acceptance criteria are written so a tester can check each line. "Builders" notes say where the work lives and what is easy to get wrong.</p>
+<h3>2.1 Account and onboarding</h3>
+<section class="story">
+<div class="sh"><span class="sid">AUTH-1</span><h4>Sign in with my phone number</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to sign in with my mobile number and a one-time code, <b>so that</b> I do not need to remember a password.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The phone field accepts a 10-digit Indian mobile number starting 6 to 9; anything else shows a clear error.</li><li>A 6-digit code is sent by SMS. A wrong code shows an error and does not sign me in.</li><li>I can resend the code after 30 seconds; the button shows the countdown.</li><li>After signing in, reloading the page keeps me signed in. The sign-out button signs me out.</li><li>A returning user goes straight to the home screen; a new user goes to AUTH-2.</li></ul></div><div class="bn"><b>Builders:</b> Supabase phone OTP (src/backend/remote.js: sendOtp, verifyOtp). SMS delivery needs a provider configured in Supabase; for India that means DLT-registered templates. Offline demo mode accepts any 4 digits.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">AUTH-2</span><h4>Introduce myself the first time</h4></div>
+<p class="us"><b>As a</b> new student, <b>I want</b> to give my name, exam year and date of birth, and accept the privacy policy, <b>so that</b> my account is set up properly.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>I enter my name, choose NEET year 2027, 2028 or 2029, and enter my date of birth.</li><li>I must tick that I have read the privacy policy (it opens in a new tab and keeps my form).</li><li>Only my birth year is stored, never the full date of birth.</li><li>The form cannot be submitted without all of the above.</li></ul></div><div class="bn"><b>Builders:</b> Server function complete_signup computes age from the date it receives and discards the date. Do not add a column for the full date.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">AUTH-3</span><h4>Parent or guardian consent when I am under 18</h4></div>
+<p class="us"><b>As a</b> student under 18, <b>I want</b> my parent or guardian to agree before I start, <b>so that</b> the service is used with their knowledge.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>If my age is 13 to 17, a Parent or guardian consent section appears: relationship (mother, father, legal guardian), their full name, their 10-digit mobile number, and a consent tick.</li><li>If I am under 13, sign-up is refused with a clear message.</li><li>I cannot continue until every consent field is complete.</li><li>If I am 18 or older, none of this appears.</li><li>The consent record (name, number, relationship, policy version, time) is saved and deleted if my account is deleted.</li></ul></div><div class="bn"><b>Builders:</b> The guardian is NOT verified (no OTP to their phone). It is a recorded declaration. Whether this meets the DPDP Act needs legal review. Minimum age 13 is MIN_AGE in src/privacy.js and in the SQL; change both together.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">AUTH-4</span><h4>Choose language and light or dark</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to switch between English and Hindi and between light and dark themes, <b>so that</b> the app is comfortable to read.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>A language selector in the header offers English and Hindi. Meiteilon is listed as soon and cannot be selected yet.</li><li>My choice is remembered on this device.</li><li>The sign-in, header, footer and home screens change language; other screens are still English (see 4.2).</li><li>The dark mode button works and the app follows my phone's setting by default.</li></ul></div><div class="bn"><b>Builders:</b> src/i18n holds English (source of truth), Hindi (first draft, needs native review) and an empty Meiteilon file. New student-facing strings go through t(key) and are added to en.js first.</div>
+</section>
+<h3>2.2 Tests</h3>
+<section class="story">
+<div class="sh"><span class="sid">TEST-1</span><h4>See the tests I can take</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to see Biology tests with their size, duration and my last score, <b>so that</b> I can choose what to practise.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The home screen shows Biology as live, with the number of Botany and Zoology questions, and Physics and Chemistry as Coming soon.</li><li>Each published test shows its type, number of questions, duration in minutes, my last score if I have one, and either an unlocked badge or its unlock price.</li><li>Buttons: Start test or Retake test, View result (if I have attempted it), Unlock (if not unlocked).</li><li>A banner states how many free explanations I have left, or that they are used up.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">TEST-2</span><h4>Read the instructions before I start</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to see the rules of the test first, <b>so that</b> nothing surprises me.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The page shows question count, duration and marking (+4 / -1).</li><li>It explains the timer, mark for review, and auto-submit.</li><li>Start test begins the attempt.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">TEST-3</span><h4>Take a timed test</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to answer questions one at a time with a timer and a question palette, <b>so that</b> it feels like the real exam.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>One question is shown at a time with four options. Option labels follow the question's chosen style (A B C D, 1 2 3 4, i ii iii iv, and so on).</li><li>A question may include a diagram.</li><li>Selecting an option highlights it; Clear response removes it; Save and next, Previous and the palette move between questions.</li><li>Mark for review flags a question. Palette colours and shapes show answered, not answered, marked, current and not visited, with a legend.</li><li>A countdown timer is always visible and changes style when 10 minutes and 2 minutes remain (colour plus the timer itself).</li><li>Time spent on each question is recorded.</li></ul></div><div class="bn"><b>Builders:</b> The attempt is created on the server when the test page opens (start_attempt) so the server clock starts with the student's. Answers live only in the browser until submission. A page refresh mid-test loses the answers (see 4.2).</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">TEST-4</span><h4>Submit my test</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to submit by hand or have it submit itself at 00:00, <b>so that</b> my score is recorded fairly.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Pressing Submit shows a summary (answered, not answered, marked, time left) and asks me to confirm.</li><li>At 00:00 the test submits itself.</li><li>If the network fails, my answers stay on screen with a Try again button; nothing is lost.</li><li>The score is calculated on the server, not in the browser. The browser never receives the correct answers.</li><li>A submission that arrives up to 5 minutes after the time limit is accepted (slow networks); later ones are refused with a clear message.</li></ul></div><div class="bn"><b>Builders:</b> SQL function submit_attempt does the scoring and is idempotent: submitting twice returns the same result.</div>
+</section>
+<h3>2.3 Results</h3>
+<section class="story">
+<div class="sh"><span class="sid">RES-1</span><h4>See how I did</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> my score, accuracy, number attempted and time used, <b>so that</b> I know where I stand.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Four tiles: score out of the maximum, accuracy on attempted questions, attempted out of total, and time used.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">RES-2</span><h4>See where I am strong and weak</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> breakdowns by outcome, subject, chapter and time, <b>so that</b> I know what to revise.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>A donut shows correct, incorrect and skipped, with numbers and icons, not colour alone.</li><li>Bars show results for Botany versus Zoology and by chapter.</li><li>A time-per-question strip highlights questions that took more than 1.5 times the average.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">RES-3</span><h4>Review each question</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a table of every question with my answer and whether it was right, <b>so that</b> I can go back to the ones I missed.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Each row shows the question, my answer, and Correct, Incorrect or Skipped with an icon and text.</li><li>The correct answer is not shown in the table until I have opened that question's explanation; the cell says it is shown with the explanation.</li><li>Each row has an Explain button. Retake and Back to tests are available.</li></ul></div><div class="bn"><b>Builders:</b> Deliberate decision: showing the answer here would bypass the tutor. Students still see which of their picks were right because that is the score.</div>
+</section>
+<h3>2.4 Solutions: the Socratic tutor</h3>
+<section class="story">
+<div class="sh"><span class="sid">SOL-1</span><h4>Open a solution</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to open the explanation for a question from my result, <b>so that</b> I learn from it.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The server checks my entitlement first (see PAY-1 to PAY-4). If allowed, the tutor opens; if not, I see the locked card (PAY-2).</li><li>I can only open explanations for questions that were in a test I have submitted.</li><li>Prev and Next move between the questions of the test.</li></ul></div><div class="bn"><b>Builders:</b> One gate decides this: SQL private.open_explanation, called only by the API (POST /api/explain/open). Staff opening a question for preview never use up a free slot.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-2</span><h4>Be guided to the answer</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a tutor that asks me two or three short questions, <b>so that</b> I work out the idea myself.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The tutor greets me and asks the first guiding question. A stage tracker (Recall, Reason, Apply) shows progress.</li><li>I can tap one of the answer buttons or type my own answer (up to 500 characters).</li><li>After each answer a chip shows On track, Partly there, Let us rethink or Hint given (icon plus text), and a You have worked out list builds up.</li><li>The tutor never states the correct option before the session ends. If its reply would give the answer away, the server replaces it with the built-in guide's reply.</li><li>After at most 5 of my messages the session ends.</li></ul></div><div class="bn"><b>Builders:</b> The tutor is Claude when an API key is configured; otherwise, or if Claude fails or the daily limit is reached, a scripted keyword guide answers. The screen shows which one is helping. Prompts are built on the server from the database; the browser sends only {questionId, messages, kind, hintLevel}.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-3</span><h4>Ask for a hint or say I am not sure</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> up to 3 hints, each stronger than the last, <b>so that</b> I get unstuck without being told the answer.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Give me a hint gives hint 1 (rephrase), then 2 (a concrete clue), then 3 (nearly gives it away). The button shows 1/3, 2/3, 3/3 and then stops.</li><li>I am not sure gives an easier version of the question and does not use a hint.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-4</span><h4>Have a fair time limit</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a 2:00 timer per question, <b>so that</b> I do not stay stuck forever.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>A 2:00 timer counts down. It pauses while the tutor is thinking.</li><li>At 00:00 the explanation opens by itself.</li><li>The timer is also kept on the server: the browser cannot reveal the answer early by claiming time is up.</li></ul></div><div class="bn"><b>Builders:</b> Server tracks started_at and paused_ms (time waiting on the model). A timeout reveal earlier than 117 seconds (120 minus a 3 second grace) is refused.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-5</span><h4>See the full explanation when I am done</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> the correct answer, a written explanation, why each wrong option is wrong, and a short summary, <b>so that</b> I understand and remember it.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The explanation opens when the guided questions end, the timer ends, or I tap Show me the answer.</li><li>It shows: Answer with its label, the explanation, why each other option is wrong, Key idea, Common mistake, and the NCERT reference.</li><li>On the question card the correct option is now marked Correct with an icon, and my wrong pick is marked Your answer.</li><li>If I took part, a short Your thinking note shows what I did well, what to revisit and one exam tip.</li></ul></div><div class="bn"><b>Builders:</b> Served by GET /api/explain/:questionId, which returns 403 until the server has marked the session finished. Nothing else carries these fields.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-6</span><h4>Watch the video explanation</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a short video for each question, <b>so that</b> I can see the concept explained.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The video panel is locked (with a message) until the tutor session ends.</li><li>Paid students can tap Skip to video to watch before the session ends.</li><li>Controls: play and pause, speed 1x, 1.5x, 2x, captions text, full screen.</li><li>If a question has no video yet, the panel says so.</li><li>If the video link expires during playback, the player gets a fresh link and carries on.</li></ul></div><div class="bn"><b>Builders:</b> Videos are in a private bucket. POST /api/video-url signs a 10-minute URL only for an allowed session. Never expose the storage path to students.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-7</span><h4>Come back to an explanation I already earned</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to reopen a finished explanation without redoing it, <b>so that</b> I can revise quickly.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Reopening a question I already finished shows the explanation directly, with no new tutor chat.</li><li>It does not use another free explanation.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">SOL-8</span><h4>Save questions to revise</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a Save to revision list button after an explanation, <b>so that</b> I can come back to hard questions.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The button appears after the explanation opens, toggles saved or not, and the Profile screen lists saved questions.</li></ul></div>
+</section>
+<h3>2.5 Free plan, paywall and payments</h3>
+<section class="story">
+<div class="sh"><span class="sid">PAY-1</span><h4>Use the free plan</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> 2 free full explanations, <b>so that</b> I can try the tutor before paying.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The header and solution screens show Free explanations left: N.</li><li>Opening an explanation for a question uses one free slot. Reopening the same question does not use another.</li><li>The two free slots are shared across all tests, not per test.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PAY-2</span><h4>See clearly when I need to pay</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a clear locked screen after my free explanations are used, <b>so that</b> I know what to do next.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The locked card says my free explanations are used, shows my result for this question (right, wrong or skipped) and an Unlock for Rs 100 button.</li><li>The question and my own answer stay visible.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PAY-3</span><h4>Pay Rs 100 to unlock a test</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to pay with UPI or card, <b>so that</b> I get every solution and video in that test.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Pay opens Razorpay's payment window (UPI and cards).</li><li>After I pay, the screen says Confirming your payment. It changes to Payment successful only when the server has received Razorpay's confirmation, which usually takes seconds.</li><li>If confirmation is slow, I see a message that my test will unlock shortly, a Check again button, and I can close the window safely.</li><li>If the payment fails I see a clear message that I was not charged, and a Try again button.</li><li>After success, the locked question opens straight into the tutor.</li></ul></div><div class="bn"><b>Builders:</b> Crucial: the browser's payment success callback never unlocks anything. Only a verified Razorpay webhook (signature checked over the raw body, amount matched to the order, idempotent on event id) inserts an unlock. The price is read from the database, never from the browser.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PAY-4</span><h4>Keep what I paid for</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> an unlock to cover all questions of that test permanently, <b>so that</b> I do not pay twice.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>An unlock covers every explanation and video in that test only. Other tests still follow the free plan.</li><li>Unlocks survive sign-out and new devices.</li><li>A test I already unlocked cannot be bought again.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PAY-5</span><h4>See my payments</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a Payment history screen, <b>so that</b> I have a record.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>It lists date, test, amount, status (Paid, Refunded, Failed, each with icon and text) and Razorpay payment id.</li><li>A paid item under review shows Refund under review.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PAY-6</span><h4>Get a refund when something went wrong</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to ask for a refund, <b>so that</b> I am treated fairly.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The student contacts support (the contact address is configured in the app).</li><li>An admin flags the payment for refund with a note (see ADM-8) and issues the refund in the Razorpay dashboard.</li><li>When Razorpay confirms the refund, the payment shows Refunded and that test locks again automatically.</li></ul></div>
+</section>
+<h3>2.6 Privacy and control of my data</h3>
+<section class="story">
+<div class="sh"><span class="sid">PRIV-1</span><h4>Read the privacy policy before signing up</h4></div>
+<p class="us"><b>As a</b> visitor, <b>I want</b> a plain-language policy at a public address, <b>so that</b> I know what is collected and why.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>It opens from the sign-in screen, the footer and the address /#/privacy without signing in.</li><li>It states: what is collected, why, who handles it (Supabase, Anthropic, Razorpay, an SMS provider, hosting), retention periods, the rules for students under 18, and how to use my rights.</li></ul></div><div class="bn"><b>Builders:</b> Have a lawyer review the text before launch. Retention numbers are in src/privacy.js and the SQL purge function; keep them equal.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PRIV-2</span><h4>Download my data</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> a file of everything the service holds about me, <b>so that</b> I can see and keep it.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Profile, Privacy, Download my data gives a JSON file with my profile, consent record, attempts and answers, unlocks, payments, free explanations used and revision list.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">PRIV-3</span><h4>Delete my account and data</h4></div>
+<p class="us"><b>As a</b> student, <b>I want</b> to delete everything, <b>so that</b> I stay in control.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>I must type DELETE to confirm; the dialog says it cannot be undone and that paid tests will lock.</li><li>My account, attempts, answers, unlocks, saved questions and consent record are removed.</li><li>Payment records stay for accounting but are no longer linked to me.</li><li>Signing in again with the same number starts a brand-new account.</li><li>The last remaining admin cannot delete their account.</li></ul></div>
+</section>
+<h3>2.7 Teacher and admin tools</h3>
+<table class="narrow"><thead><tr><th>Area</th><th>Teacher</th><th>Admin</th></tr></thead><tbody><tr><td>Dashboard, Question bank, Tests, Analytics (content)</td><td>Yes</td><td>Yes</td></tr><tr><td>Payments, refund flags, revenue</td><td>No</td><td>Yes</td></tr><tr><td>Users and plans, role changes, manual unlock</td><td>No</td><td>Yes</td></tr><tr><td>View the student screens (switch in the header)</td><td>Yes</td><td>Yes</td></tr></tbody></table>
+<section class="story">
+<div class="sh"><span class="sid">ADM-1</span><h4>See the state of the business at a glance</h4></div>
+<p class="us"><b>As a</b> admin, <b>I want</b> a dashboard, <b>so that</b> I know what exists and what is happening.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Shows counts of tests, questions (and how many are published), submitted attempts and, for admins, students and active unlocks.</li><li>Quick actions: Add question, Build a test, See analytics.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-2</span><h4>Find questions</h4></div>
+<p class="us"><b>As a</b> teacher, <b>I want</b> a searchable list of all questions, <b>so that</b> I can manage the bank.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The list shows question, subject, chapter, difficulty, whether a video is uploaded, and status (draft or published).</li><li>I can filter by subject and status and search the question text.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-3</span><h4>Create and edit a question</h4></div>
+<p class="us"><b>As a</b> teacher, <b>I want</b> a form for one question with its explanation, tutor prompts, diagram and video, <b>so that</b> students get a complete lesson.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Fields: subject (Botany or Zoology), chapter, difficulty, question text, four options with the correct one selected, Option labels style, NCERT reference, written explanation, 2 to 3 guiding questions (with expected keywords and a hint), caption text.</li><li>Option labels can be A B C D, a b c d, 1 2 3 4, i ii iii iv, I II III IV or Hindi letters. The correct answer is always stored by position, so changing the style never breaks scoring.</li><li>Diagram: upload a PNG, JPEG or WebP up to 5 MB. Alt text is required before saving.</li><li>Video: upload an MP4 up to 200 MB with a progress bar and a Cancel button; wrong type or oversize files are rejected before upload; a replaced or cancelled upload is cleaned up.</li><li>Save draft needs only the question, four options and the correct answer. Publish additionally needs an explanation and at least two guiding questions.</li><li>Only published questions can go into a published test.</li></ul></div><div class="bn"><b>Builders:</b> Writes go through the SQL function admin_upsert_question (one transaction across questions, question_secrets and socratic_steps). The editor reads secrets via admin_get_question; students can never call it.</div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-4</span><h4>Import many questions from a spreadsheet</h4></div>
+<p class="us"><b>As a</b> teacher, <b>I want</b> to upload a CSV file, <b>so that</b> I do not type hundreds of questions.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>A downloadable template shows the columns: subject, chapter, difficulty, question, optA to optD, correct, ncert, explanation, ask1, keys1, hint1, ask2, keys2, hint2 (optional ask3, keys3, hint3, optstyle).</li><li>After choosing a file I see a preview: total rows, how many are ready, have warnings, or have errors, and each row's problems by line number.</li><li>Rows with errors are skipped. Duplicates (against the bank or inside the file) are errors. Physics or Chemistry rows are errors for now.</li><li>Valid rows are imported as drafts, with a progress bar and a final summary; one failed row does not stop the others.</li><li>Limits: 500 rows and 1 MB per file.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-5</span><h4>Build and publish a test</h4></div>
+<p class="us"><b>As a</b> teacher, <b>I want</b> to choose questions, order them, and set duration and price, <b>so that</b> students can take it.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>I name the test, set the duration in minutes and the unlock price, tick published questions, and reorder them.</li><li>A Published switch makes it visible to students. A test cannot be published with no questions or with draft questions.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-6</span><h4>Learn from real results</h4></div>
+<p class="us"><b>As a</b> teacher, <b>I want</b> analytics from real attempts, <b>so that</b> I improve the content.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>Average score by test; hardest questions (lowest share correct, shown once a question has at least 3 answers); time per question; and for admins, revenue.</li><li>Every number comes from the database. Empty states say there is no data yet. No sample numbers are shown in the live app.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-7</span><h4>Manage users</h4></div>
+<p class="us"><b>As a</b> admin, <b>I want</b> a list of users with roles and a way to help them, <b>so that</b> I can run support.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The list shows name, masked phone number (like 9198xxxx0088), role, unlocked tests and attempts.</li><li>I can change someone's role (not my own). Manual unlock gives a student a test without payment, for support cases.</li></ul></div>
+</section>
+<section class="story">
+<div class="sh"><span class="sid">ADM-8</span><h4>Handle refunds</h4></div>
+<p class="us"><b>As a</b> admin, <b>I want</b> to see all payments and flag one for refund, <b>so that</b> refunds are tracked.</p>
+<div class="ac"><div class="lab">Acceptance criteria</div><ul><li>The Payments tab lists date, student, test, amount, method, status and refund flag with note.</li><li>Flag for refund records a reason and who flagged it; Clear flag removes it. Flagging does not move money or lock the test.</li><li>When Razorpay later confirms the refund, the status becomes Refunded and the unlock is revoked.</li></ul></div>
+</section>
+<h2 class="part">Part 3. Builder guide</h2>
+<h3>3.1 Architecture in one picture</h3>
+<svg class="arch" viewBox="0 0 760 310" role="img" aria-label="Architecture: the browser talks to Supabase and to the API; the API talks to the database and storage, to Claude and to Razorpay; Razorpay calls the API webhook.">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f5c45"/></marker><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a5a00"/></marker></defs>
+<g font-family="DejaVu Sans, Arial, sans-serif" font-size="12">
+<rect x="10" y="105" width="140" height="90" rx="8" fill="#e7f0ea" stroke="#1f5c45"/><text x="80" y="133" text-anchor="middle" font-weight="700">Browser</text><text x="80" y="152" text-anchor="middle" font-size="11">React app (Vercel)</text><text x="80" y="168" text-anchor="middle" font-size="11">students and staff</text>
+<rect x="270" y="10" width="230" height="80" rx="8" fill="#fff" stroke="#1f5c45"/><text x="385" y="36" text-anchor="middle" font-weight="700">Supabase</text><text x="385" y="54" text-anchor="middle" font-size="11">sign-in (phone OTP)</text><text x="385" y="70" text-anchor="middle" font-size="11">reads under row-level security</text>
+<rect x="270" y="115" width="230" height="80" rx="8" fill="#fff" stroke="#1f5c45"/><text x="385" y="141" text-anchor="middle" font-weight="700">Node API (Render)</text><text x="385" y="159" text-anchor="middle" font-size="11">tutor, explanations, video links,</text><text x="385" y="175" text-anchor="middle" font-size="11">payments, my data</text>
+<rect x="270" y="220" width="230" height="80" rx="8" fill="#fff" stroke="#1f5c45"/><text x="385" y="246" text-anchor="middle" font-weight="700">Postgres + Storage</text><text x="385" y="264" text-anchor="middle" font-size="11">tables, SQL functions,</text><text x="385" y="280" text-anchor="middle" font-size="11">private videos bucket</text>
+<rect x="610" y="115" width="140" height="36" rx="8" fill="#fff" stroke="#8a5a00"/><text x="680" y="138" text-anchor="middle" font-weight="700">Claude API</text>
+<rect x="610" y="165" width="140" height="36" rx="8" fill="#fff" stroke="#8a5a00"/><text x="680" y="188" text-anchor="middle" font-weight="700">Razorpay</text>
+</g>
+<g stroke="#1f5c45" stroke-width="1.5" fill="none" marker-end="url(#ar)">
+<path d="M150 125 L270 60"/><path d="M150 160 L270 160"/><path d="M385 90 L385 115" marker-start="url(#ar)"/><path d="M385 195 L385 220" marker-start="url(#ar)"/>
+<path d="M500 133 L610 133"/><path d="M610 183 L500 183" stroke="#8a5a00" stroke-dasharray="4 3" marker-end="url(#ar2)"/>
+</g>
+<g font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">
+<rect x="160" y="68" width="84" height="14" fill="#fff"/><text x="202" y="79">sign in, read lists</text>
+<rect x="164" y="165" width="76" height="14" fill="#fff"/><text x="202" y="176">secrets, payments</text>
+<rect x="526" y="118" width="58" height="13" fill="#fff"/><text x="555" y="128">tutor turns</text>
+<rect x="520" y="168" width="70" height="13" fill="#fff"/><text x="555" y="178">signed webhook</text>
+</g>
+</svg>
+<p class="cap">Solid arrows: requests. Dashed: Razorpay calls the API's webhook after a payment.</p>
+<p>The idea in one sentence: <b>the browser may read what a student is allowed to see; anything secret or privileged goes through the API or a SQL function that checks who is asking.</b></p>
+<h3>3.2 Repository map</h3>
+<table class=""><thead><tr><th>Path</th><th>What is there</th></tr></thead><tbody><tr><td>src/</td><td>React 18 + Vite app. views/ = screens; store.jsx = app state with the same action names throughout; backend/ = mock.js (offline demo, localStorage) and remote.js (Supabase); api.js, tutorDriver.js = talk to the API; i18n/ = languages; csv.js, media.js, checkout.js = helpers.</td></tr><tr><td>shared/</td><td>Code used by browser, API and tests: rules.js (all product constants), tutor-core.js (prompts, validation, answer-leak guard, scripted tutor, hint ladder), labels.js (option labels).</td></tr><tr><td>server/</td><td>Node API (Express): app.js routes, tutor.js, video.js, payments.js, me.js, claude.js, razorpay.js, auth.js, storage.js, db.js. Everything external is injected, so tests swap in fakes.</td></tr><tr><td>supabase/</td><td>migrations/ (the database, in order), setup-all.sql (all migrations in one file for pasting into the Supabase SQL editor), seed.sql (generated from src/data.js by npm run gen:seed), config.toml.</td></tr><tr><td>dev/</td><td>Local stack for development and tests only: in-process Postgres (PGlite), a small stand-in for Supabase sign-in, data and storage, and the API. Never deploy it.</td></tr><tr><td>tests/, server/*.test.js, e2e/</td><td>Unit and database tests (vitest) and browser tests (Playwright).</td></tr><tr><td>docs/LAUNCH.md</td><td>Go-live checklist. CLAUDE.md holds the product rules, status and conventions.</td></tr></tbody></table>
+<h3>3.3 Data model</h3>
+<table class=""><thead><tr><th>Table</th><th>Purpose</th><th>Who can read or write</th></tr></thead><tbody><tr><td>profiles</td><td>One per user: role, name, phone, exam year, birth year, is_minor, language.</td><td>Own row; admins read all. Students may edit only name, exam year, language.</td></tr><tr><td>questions</td><td>The part safe to show during a test: subject, chapter, text, four options, option style, diagram path and alt text, status.</td><td>Students read published; staff read and write all.</td></tr><tr><td>question_secrets</td><td>Correct answer, explanation, why-wrong, recap, NCERT, caption, video path.</td><td>Staff only. Students never.</td></tr><tr><td>socratic_steps</td><td>2 to 3 guiding questions with keywords, hints and tap choices.</td><td>Staff only.</td></tr><tr><td>tests, test_questions</td><td>A test and its ordered questions, duration, price, published flag.</td><td>Students read published; staff write.</td></tr><tr><td>attempts, attempt_answers</td><td>Each attempt and, per question, the chosen option, correct or not, and seconds.</td><td>Own rows; created and scored only by SQL functions.</td></tr><tr><td>free_explanation_uses</td><td>Which questions used a free slot (limit 2 per student).</td><td>Read own; inserts capped by a trigger.</td></tr><tr><td>unlocks</td><td>A student's paid or manual unlock of a test (with revoked_at).</td><td>Read own; written only by the payment webhook or admin function.</td></tr><tr><td>tutor_sessions</td><td>Per student and question: access type, status, timer data, counters. No chat text.</td><td>Read own; written only by the API.</td></tr><tr><td>ai_usage</td><td>Token counts and timings per tutor call. No prompts or replies.</td><td>Admin read; API write.</td></tr><tr><td>payments, payment_events</td><td>Razorpay orders, status, refund flag; processed webhook event ids.</td><td>Student reads own; admin reads all; API writes.</td></tr><tr><td>parental_consents</td><td>Guardian name, mobile, relationship, policy version, time.</td><td>Read own; written at sign-up by a SQL function.</td></tr><tr><td>revision_items</td><td>Questions a student saved.</td><td>Own rows.</td></tr></tbody></table>
+<p>Storage buckets: <b>videos</b> (private, MP4 only, 200 MB, staff-only access) and <b>diagrams</b> (public read, images up to 5 MB, staff write, random file names).</p>
+<h3>3.4 Security model (read this before changing anything)</h3>
+<ul><li><b>Never trust the browser.</b> Scoring, entitlement, the tutor timer, prices and unlocks are all decided on the server or in SQL.</li><li><b>Secrets live in tables students cannot read.</b> Row-level security cannot hide single columns, which is why correct answers, explanations and tutor prompts are in separate tables (question_secrets, socratic_steps).</li><li><b>One entitlement gate.</b> private.open_explanation decides staff preview, paid unlock, already-spent free slot, new free slot or paywall, using a lock so two parallel requests cannot exceed the free limit. Clients have no write access to unlocks, free uses, sessions or usage.</li><li><b>Payments unlock only from the webhook.</b> HMAC-SHA256 over the raw request body, amount and currency matched to our own order, idempotent on Razorpay's event id. The browser success callback is ignored.</li><li><b>Helpers are private.</b> Internal functions are in a private schema that the Supabase API does not expose, and execute permission is revoked from signed-in users.</li><li><b>Keys.</b> Anything with VITE_ in its name is public. The service_role key, database URL, Anthropic key and Razorpay secrets exist only on the API host.</li><li><b>Minimal data.</b> Chat text is never stored. Birth year only. Phone numbers are masked in admin screens. Retention job purges old rows.</li><li><b>Tutor answer-leak guard.</b> Before showing a Claude reply, the server blocks explicit answer statements ("the answer is", option labels) and long verbatim runs from the explanation, and falls back to the scripted tutor.</li></ul>
+<h3>3.5 Key flows</h3>
+<h4>A. Take and score a test</h4>
+<ol class="flow"><li>Student opens the test: browser calls start_attempt, server creates an attempt row and its clock.</li><li>Student answers in the browser. Nothing is sent yet.</li><li>Submit (or 00:00): browser sends {attempt, answers by question id, seconds by question id} to submit_attempt.</li><li>SQL checks the attempt is the caller's and in time, compares with question_secrets, writes attempt_answers, and stores correct, wrong, skipped and score (+4 / -1 / 0).</li><li>Browser reads back the attempt rows (is_correct only, never the correct option) and shows the result.</li></ol>
+<h4>B. Open a solution and run the tutor</h4>
+<ol class="flow"><li>POST /api/explain/open {attemptId, questionId}: the gate runs. Result: a session (access paid, free or staff), seconds left, first guiding question and shuffled tap choices. Or HTTP 402 paywall.</li><li>Each answer: POST /api/tutor/turn {questionId, messages, kind, hintLevel}. The server loads the question and secrets, builds the prompt, calls Claude (low effort, short reply), validates the JSON, runs the leak guard, updates counters, logs token use, and returns only {verdict, reply, step, established, choices, done}. Header X-Tutor-Mode says claude, scripted or limited.</li><li>Session finishes when done is true, the student taps Show me the answer (POST /api/tutor/finish skip), or the timer ends (finish timeout, checked against the server clock).</li><li>GET /api/explain/:questionId returns the answer and explanation, only for a finished session. POST /api/tutor/wrapup returns the Your thinking note. POST /api/video-url returns a signed video link when allowed.</li></ol>
+<h4>C. Pay for a test</h4>
+<ol class="flow"><li>POST /api/payments/order {testId}: server reads the price from the database, creates a Razorpay order, stores a payments row (status created).</li><li>Browser opens Razorpay Checkout with that order. The student pays.</li><li>Razorpay calls POST /api/payments/webhook. The server verifies the signature, then SQL records the payment and inserts the unlock in one transaction.</li><li>Meanwhile the browser polls GET /api/payments/status/:orderId until it says paid, then reloads entitlements.</li><li>Refund: admin flags, refund is issued in Razorpay, webhook refund.processed marks Refunded and sets revoked_at on the unlock.</li></ol>
+<h3>3.6 API reference</h3>
+<p>All routes need a signed-in user (Authorization: Bearer token) except the webhook (signature) and /health. Errors are JSON {"error": "code"}. A per-user limit of 60 requests a minute applies.</p>
+<table class=""><thead><tr><th>Method and path</th><th>Purpose</th><th>Notable responses</th></tr></thead><tbody><tr><td>GET /health</td><td>Health check.</td><td>200 {ok: true}</td></tr><tr><td>POST /api/explain/open</td><td>Entitlement gate and tutor session start.</td><td>200 session; 402 paywall (with testId); 404 not your attempt or question</td></tr><tr><td>POST /api/tutor/turn</td><td>One tutor exchange.</td><td>200 {verdict, reply, step, established, choices, done}; 409 expired, finished or no_session</td></tr><tr><td>POST /api/tutor/finish</td><td>End the session (skip or timeout).</td><td>200; 409 too_early</td></tr><tr><td>POST /api/tutor/wrapup</td><td>Your thinking feedback.</td><td>200; 403 not_finished</td></tr><tr><td>GET /api/explain/:questionId</td><td>Answer and explanation.</td><td>200; 403 not_finished</td></tr><tr><td>POST /api/video-url</td><td>Short-lived signed video link.</td><td>200 {url, expiresIn} or {url: null}; 403 not_allowed</td></tr><tr><td>POST /api/payments/order</td><td>Create a Razorpay order.</td><td>200 {orderId, amount, keyId, ...}; 409 already_unlocked; 429; 503 not configured</td></tr><tr><td>POST /api/payments/webhook</td><td>Razorpay events.</td><td>200 {outcome}; 400 bad_signature</td></tr><tr><td>GET /api/payments/status/:orderId</td><td>Poll an order.</td><td>200 {status}</td></tr><tr><td>GET /api/me/export</td><td>Download my data.</td><td>200 JSON</td></tr><tr><td>DELETE /api/me</td><td>Delete my account (body {confirm: "DELETE"}).</td><td>200; 400; 409 last_admin</td></tr></tbody></table>
+<p>Direct database calls from the browser (under row-level security): reading tests, published questions, own attempts, unlocks, free uses, payments and revision items; and the SQL functions start_attempt, submit_attempt, complete_signup, plus the staff-only admin_* functions (upsert question, upsert test, get question, analytics, users, flag refund, grant unlock, set role).</p>
+<h3>3.7 Configuration</h3>
+<table class=""><thead><tr><th>Variable</th><th>Where</th><th>Meaning</th></tr></thead><tbody><tr><td>VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY</td><td>Frontend (public)</td><td>Leave empty for the offline demo.</td></tr><tr><td>VITE_API_URL</td><td>Frontend (public)</td><td>Address of the Node API.</td></tr><tr><td>VITE_SUPPORT_EMAIL, VITE_COMPANY_NAME</td><td>Frontend (public)</td><td>Shown in the policy and payment history.</td></tr><tr><td>DATABASE_URL</td><td>API (secret)</td><td>Postgres connection string. Use Supabase's Session pooler string.</td></tr><tr><td>SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY</td><td>API (secret)</td><td>For token checks, signed URLs and account deletion.</td></tr><tr><td>ANTHROPIC_API_KEY, CLAUDE_MODEL, CLAUDE_EFFORT</td><td>API (secret)</td><td>Tutor model (default claude-haiku-5-5, low effort). Without the key the scripted tutor is used.</td></tr><tr><td>TUTOR_DAILY_LIMIT</td><td>API</td><td>Claude turns per student per 24 hours (default 60). After it the scripted tutor answers.</td></tr><tr><td>RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET</td><td>API (secret)</td><td>Start with test keys. Webhook events: payment.captured, order.paid, payment.failed, refund.processed.</td></tr><tr><td>ALLOWED_ORIGINS, VIDEO_URL_TTL_SECONDS, PORT, PG_SSL</td><td>API</td><td>Allowed website addresses, signed-link lifetime (600), port, TLS switch.</td></tr></tbody></table>
+<h3>3.8 Numbers builders should know</h3>
+<table class=""><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody><tr><td>Free explanations</td><td>2 per student, total</td></tr><tr><td>Unlock price</td><td>Rs 100 per test (editable per test by staff)</td></tr><tr><td>Tutor timer / messages / hints</td><td>120 seconds / 5 student messages / 3 hints</td></tr><tr><td>Claude daily limit</td><td>60 turns per student per rolling 24 hours</td></tr><tr><td>Submit grace after time limit</td><td>5 minutes</td></tr><tr><td>Signed video link</td><td>10 minutes</td></tr><tr><td>Uploads</td><td>Video MP4 200 MB; diagram 5 MB (PNG, JPEG, WebP)</td></tr><tr><td>CSV import</td><td>500 rows, 1 MB</td></tr><tr><td>Ages</td><td>Minimum 13; guardian consent below 18</td></tr><tr><td>Order creation limit</td><td>10 per student per hour</td></tr><tr><td>Retention</td><td>Tutor sessions 30 days; AI usage 90 days; unsubmitted attempts 7 days; webhook event ids 60 days</td></tr></tbody></table>
+<h3>3.9 Testing</h3>
+<table class=""><thead><tr><th>Layer</th><th>Command</th><th>What it covers</th></tr></thead><tbody><tr><td>Unit, database, API, integration</td><td>npm test</td><td>About 100 tests: row-level security and scoring on a real Postgres engine, free and paid rules including parallel requests, tutor rules and leak guard, payments and webhook, refunds, privacy and deletion, analytics, CSV, labels, languages.</td></tr><tr><td>Browser end to end</td><td>npm run test:e2e</td><td>Desktop and 390px phone: sign-in to unlocked solution (with a stubbed payment window and a signed webhook), minors, delete my data, language, option labels, layout without sideways scroll and 44px touch targets.</td></tr><tr><td>Run everything locally</td><td>npm run dev:stack, then npm run dev</td><td>Local database, sign-in stand-in, storage and API. Staff test numbers 9999999999 (admin) and 9888888888 (teacher), code 123456.</td></tr></tbody></table>
+<p>CI runs the same on every push (.github/workflows/ci.yml). <b>What the tests cannot prove:</b> behaviour against the real Supabase, Razorpay, Claude and hosting services. Do the test-mode run in docs/LAUNCH.md before taking real money.</p>
+<h3>3.10 Deployment</h3>
+<ul><li>Database: run supabase/setup-all.sql once in the Supabase SQL editor (or supabase db push), then seed.sql if wanted. Make the first admin with a one-line SQL update.</li><li>API: Render (render.yaml) or any Node 22 host using the Dockerfile. Single instance first.</li><li>Frontend: Vercel (vercel.json), normal build in dist/.</li><li>Schedule public.purge_old_data() daily (pg_cron).</li><li>Order: Supabase, API, frontend, then set ALLOWED_ORIGINS on the API to the frontend address, then Razorpay webhook.</li></ul>
+<h3>3.11 Conventions</h3>
+<ul><li>Colours only from the design tokens in src/styles.css; both light and dark must work.</li><li>Real buttons and labels, 44 pixel touch targets, visible focus. Correct and incorrect are never shown by colour alone: always an icon and text.</li><li>Student-facing text goes through t(); English first.</li><li>Admin numbers must be real. Sample or demo data is labelled as such.</li><li>Add a database change as a new migration file (the existing ones may be edited only until the first real deployment). Regenerate setup-all.sql with npm run gen:setup-sql.</li><li>The store keeps one set of action names for both the offline demo and the live backend; add new actions to both backends.</li></ul>
+<h2 class="part">Part 4. Decisions, limits and next steps</h2>
+<h3>4.1 Decisions made while building</h3>
+<ul><li>The result table hides the correct option until the explanation is opened, so the tutor cannot be bypassed.</li><li>Questions have exactly four options. A fifth option would need a schema, scoring and tutor change.</li><li>Scoring is fixed at +4 / -1 / 0; a Marks field was removed from the question form.</li><li>Option label style is per question, not per test.</li><li>The guardian consent is a recorded declaration, not a verified one.</li><li>Hindi is a first draft; Meiteilon is intentionally empty until a translator fills it.</li></ul>
+<h3>4.2 Known limits</h3>
+<ul><li>Refreshing the page during a test loses the answers (the attempt is not resumable).</li><li>Video upload is a single request: a dropped connection restarts it.</li><li>The burst limiter is per API instance; the daily Claude limit is in the database.</li><li>Only the shell, sign-in and home screens are translated.</li><li>Nothing has been run against real third-party services yet.</li></ul>
+<h3>4.3 Next steps</h3>
+<ul><li>Go live with the checklist in docs/LAUNCH.md and run the test-mode payment, refund and video checks.</li><li>Legal review of the privacy policy and consent method; decide whether to verify guardians by OTP.</li><li>Native review of Hindi; commission Meiteilon; translate the remaining screens.</li><li>Resumable video upload; resumable tests after a refresh.</li><li>Physics and Chemistry: the schema already allows them; add content and enable the cards.</li></ul>
+<h3>4.4 Glossary</h3>
+<table class=""><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody><tr><td>NEET (UG)</td><td>India's national entrance test for medical undergraduate courses.</td></tr><tr><td>Socratic tutor</td><td>A guide that teaches by asking short questions instead of giving the answer.</td></tr><tr><td>Entitlement</td><td>Whether a student may open an explanation: staff, paid test, a free slot already used, or a free slot available.</td></tr><tr><td>RLS (row-level security)</td><td>Database rules that decide which rows each user can read or change.</td></tr><tr><td>Webhook</td><td>A message Razorpay sends to our server to say a payment happened.</td></tr><tr><td>Signed URL</td><td>A web address for a private file that works only for a short time.</td></tr><tr><td>OTP</td><td>One-time password sent by SMS.</td></tr><tr><td>DPDP Act</td><td>India's Digital Personal Data Protection Act, 2023, which has special rules for children's data.</td></tr></tbody></table></body></html>
