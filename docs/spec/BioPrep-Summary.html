@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BioPrep write-up</title><style>
+@page { size: A4; margin: 15mm 15mm 17mm 15mm; }
+:root { --ink:#17241d; --muted:#53635a; --line:#d5ded8; --green:#1f5c45; --soft:#eaf2ed; --amber:#8a5a00; }
+* { box-sizing: border-box; }
+html { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
+body { margin: 0; }
+h1,h2,h3 { font-family: "DejaVu Serif", Georgia, serif; line-height: 1.2; margin: 0; }
+h1 { font-size: 26pt; color: var(--green); }
+h2 { font-size: 12.5pt; color: var(--green); margin: 11pt 0 4pt; padding-top: 5pt; border-top: 2px solid var(--green); break-after: avoid; }
+p { margin: 0 0 5pt; }
+ul { margin: 2pt 0 5pt; padding-left: 14pt; } li { margin: 1.5pt 0; }
+.top { display:flex; align-items:center; gap:10pt; margin-bottom:4pt; }
+.mark { width:34pt; height:34pt; border-radius:8pt; background:var(--green); color:#fff; font:700 19pt "DejaVu Serif",serif; display:flex; align-items:center; justify-content:center; }
+.sub { color:var(--muted); font-size:8.5pt; }
+.lead { font-size:10pt; margin:5pt 0 4pt; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap: 6pt 10pt; }
+.card { border:1px solid var(--line); border-left:3pt solid var(--green); border-radius:3pt; padding:5pt 8pt 4pt; break-inside:avoid; }
+.card h3 { font-size:9.4pt; margin-bottom:2pt; }
+.card p { margin:0 0 2pt; font-size:8.6pt; }
+.card .us { font-style:italic; color:var(--muted); font-size:8.2pt; }
+table { width:100%; border-collapse:collapse; margin:3pt 0 6pt; font-size:8.3pt; }
+th { text-align:left; background:var(--soft); color:var(--green); font-size:7.6pt; text-transform:uppercase; letter-spacing:.05em; }
+th,td { padding:3pt 5pt; border:1px solid var(--line); vertical-align:top; }
+tr { break-inside:avoid; }
+.note { background:#fbf6ea; border:1px solid #ecdcae; border-radius:3pt; padding:4pt 7pt; font-size:8.3pt; color:#4a3a0c; margin:4pt 0; }
+.note b { color:var(--amber); }
+.pb { break-before: page; }
+.foot { color:var(--muted); font-size:7.8pt; margin-top:8pt; }
+</style></head><body><div class="top"><div class="mark">B</div><div><h1>BioPrep</h1><div class="sub">Product write-up for NEET (UG) Biology test prep &middot; for owners and builders &middot; 23 Oct 2026</div></div></div>
+<p class="lead"><b>What it is.</b> A web app where students take timed NEET Biology mock tests, then learn from their mistakes with a tutor that <b>asks guiding questions before it reveals the answer</b>. The answer, written explanation and video unlock only after the student has reasoned it through, the 2:00 timer ends, or they tap Show me the answer.</p>
+<p class="lead"><b>How it earns.</b> A free plan gives <b>2 full explanations in total</b>. After that, <b>Rs 100 per test</b> unlocks every solution and video in that test, permanently.</p>
+<h2>Who uses it</h2>
+<table><tr><th style="width:17%">Person</th><th>What they do</th></tr>
+<tr><td><b>Student</b> (many under 18)</td><td>Signs in with a phone number and code, takes tests, reads results, opens solutions, pays to unlock, can download or delete their data.</td></tr>
+<tr><td><b>Parent / guardian</b></td><td>No login. Gives consent during a minor's sign-up (name, mobile, relationship, a tick).</td></tr>
+<tr><td><b>Teacher</b></td><td>Builds the question bank (typed or CSV), diagrams, videos and tests; sees content analytics.</td></tr>
+<tr><td><b>Admin</b></td><td>Everything a teacher can, plus users and roles, payments, refund flags, revenue, manual unlocks.</td></tr></table>
+<h2>A student's journey</h2>
+<ul>
+<li><b>1. Sign up.</b> Enter a mobile number, then the SMS code. First time only: name, NEET year, date of birth, accept the privacy policy. Under 18: a parent or guardian completes a consent step. Under 13 is refused.</li>
+<li><b>2. Take a test.</b> Pick a Biology test, read the rules, start. One question at a time with a question palette, mark for review, and a visible timer. It submits itself at 00:00. Marking is +4, -1, 0.</li>
+<li><b>3. Read the result.</b> Score, accuracy, correct / incorrect / skipped, Botany vs Zoology, chapter bars, time per question, and a review table. The correct answer stays hidden until the student opens that explanation.</li>
+<li><b>4. Learn from a mistake.</b> Tap Explain. The tutor asks 2 or 3 short questions (tap an option or type). Up to 3 hints, each stronger. At the end: the answer, explanation, why each wrong option is wrong, key idea, common mistake, and a video.</li>
+<li><b>5. Hit the paywall.</b> After 2 free explanations a locked screen offers Unlock for Rs 100. Pay by UPI or card on Razorpay. The test unlocks when the server receives Razorpay's confirmation, usually within seconds.</li>
+<li><b>6. Stay in control.</b> Payment history, a revision list, English or Hindi, dark mode, privacy policy, Download my data, Delete my account.</li></ul>
+<h2>Features at a glance</h2><div class="grid"><div class="card"><h3>Tests</h3><p class="us">As a student I want an exam-like test.</p><ul><li>Timer with warnings, palette, mark for review, clear response</li><li>Auto-submit at 00:00; answers kept if the network drops</li><li>Scored on the server, never in the browser</li><li>Option labels per question: A B C D, 1 2 3 4, i ii iii iv, Hindi letters</li></ul></div><div class="card"><h3>Results</h3><p class="us">As a student I want to know what to revise.</p><ul><li>Score, accuracy, attempted, time used</li><li>Outcome donut with icons and text, never colour alone</li><li>Subject and chapter bars; slow questions highlighted</li></ul></div><div class="card"><h3>Socratic tutor</h3><p class="us">As a student I want to work it out myself.</p><ul><li>Claude when configured, otherwise a built-in scripted guide</li><li>3-level hint ladder; 2:00 timer that pauses while thinking</li><li>Never states the answer early; replies are checked</li><li>Up to 5 messages per question</li></ul></div><div class="card"><h3>Video</h3><p class="us">As a student I want to watch the concept.</p><ul><li>Locked until the tutor session ends (paid: Skip to video)</li><li>Private storage, short-lived links, speeds 1x / 1.5x / 2x</li><li>Admin uploads MP4 up to 200 MB with a progress bar</li></ul></div><div class="card"><h3>Free plan and payments</h3><p class="us">As a student I want to try before I pay.</p><ul><li>2 free explanations in total; one unlock = one whole test</li><li>Razorpay UPI and cards; success shown only after the verified webhook</li><li>Payment history; refund flagged by admin, refunded in Razorpay, test re-locks automatically</li></ul></div><div class="card"><h3>Privacy and children</h3><p class="us">As a parent I want my child protected.</p><ul><li>Only birth year stored; tutor chats never stored</li><li>Guardian consent record for under 18</li><li>Download or delete all data; old records purged on a schedule</li><li>Public privacy policy page</li></ul></div><div class="card"><h3>Teacher tools</h3><p class="us">As a teacher I want to build content fast.</p><ul><li>Question form: explanation, guiding questions, diagram (alt text required), video</li><li>CSV import with preview and per-row errors; rows land as drafts</li><li>Test builder with publish switch</li></ul></div><div class="card"><h3>Admin tools</h3><p class="us">As an admin I want to run the business.</p><ul><li>Real analytics: average score per test, hardest questions, time per question, revenue</li><li>Users with masked phones, role changes, manual unlock</li><li>Payments list and refund flags</li></ul></div></div><h2>Rules that must not change without the owner's approval</h2>
+<table><tr><th>Rule</th><th>Value</th></tr>
+<tr><td>Live subjects</td><td>Biology (Botany and Zoology). Physics and Chemistry show as Coming soon.</td></tr>
+<tr><td>Marking</td><td>+4 correct, -1 wrong, 0 skipped. Same for every question.</td></tr>
+<tr><td>Free plan / price</td><td>2 explanations in total / Rs 100 per test, one time.</td></tr>
+<tr><td>Tutor</td><td>2:00 per question, 3 hints, ends after 5 student messages. Video unlocks after the session ends, a timeout, or Show me the answer.</td></tr>
+<tr><td>Roles</td><td>student, teacher, admin. Enforced on the server, never only on screen.</td></tr></table><h2>For builders: what you must understand</h2><p><b>The one idea:</b> the browser may read what a student is allowed to see. Anything secret or privileged goes through the API or a SQL function that checks who is asking. Never trust the client for scoring, price, entitlement or the timer.</p>
+<table><tr><th style="width:19%">Part</th><th>Technology and role</th></tr>
+<tr><td>Website</td><td>React 18 + Vite (<code>src/</code>), deployed on Vercel. One store with the same action names for two backends: an offline demo (localStorage) and the live Supabase backend.</td></tr>
+<tr><td>Database and login</td><td>Supabase Postgres with row-level security, phone-OTP sign-in, private <i>videos</i> bucket and public <i>diagrams</i> bucket (<code>supabase/migrations</code>).</td></tr>
+<tr><td>API</td><td>Node + Express on Render (<code>server/</code>): tutor, explanations, video links, payments webhook, export and delete my data.</td></tr>
+<tr><td>Shared code</td><td><code>shared/</code>: product constants, tutor prompts and validation, option labels. Used by browser, API and tests.</td></tr>
+<tr><td>Services</td><td>Claude API (tutor), Razorpay (payments), an SMS provider (OTP).</td></tr></table>
+<h2>Security rules builders must keep</h2>
+<ul>
+<li><b>Secrets are in tables students cannot read.</b> Correct answers, explanations, video paths and tutor prompts live in <code>question_secrets</code> and <code>socratic_steps</code>, because row-level security cannot hide single columns.</li>
+<li><b>One entitlement gate.</b> <code>private.open_explanation</code> decides staff preview, paid unlock, free slot or paywall. Clients have no write access to unlocks, free uses, sessions or usage. A lock stops parallel requests exceeding the free limit.</li>
+<li><b>Only the Razorpay webhook unlocks.</b> Signature is checked over the raw body, amount matched to our own order, repeated events ignored. The browser's payment-success callback never unlocks anything. Price always comes from the database.</li>
+<li><b>Tutor never leaks.</b> Prompts are built on the server; the browser receives only <code>{verdict, reply, step, established, choices, done}</code>. The answer and explanation come from a separate call that returns 403 until the server has marked the session finished.</li>
+<li><b>Keys.</b> Anything named <code>VITE_*</code> is public. The service key, database URL, Anthropic key and Razorpay secrets live only on the API host.</li>
+<li><b>Minimal data.</b> No chat text stored, birth year only, masked phones in admin, scheduled purge of old rows.</li></ul>
+<h2>Working in the code</h2>
+<ul>
+<li><b>Run it:</b> <code>npm install</code>, <code>npm run dev:stack</code> (local database, sign-in stand-in, storage and API), then <code>npm run dev</code>. Test numbers: 9999999999 (admin), 9888888888 (teacher), code 123456.</li>
+<li><b>Test it:</b> <code>npm test</code> (about 100 tests on a real Postgres engine: security rules, scoring, free and paid rules, payments, privacy) and <code>npm run test:e2e</code> (browser tests on desktop and a 390px phone).</li>
+<li><b>Change the database</b> only with a new file in <code>supabase/migrations</code> once anything is deployed; then run <code>npm run gen:setup-sql</code>.</li>
+<li><b>Conventions:</b> colours only from design tokens, light and dark; 44px touch targets; correct and incorrect always shown with an icon and text; student-facing text through <code>t()</code> (English first); admin numbers must be real.</li></ul>
+<h2>Status, limits and next steps</h2>
+<div class="note"><b>Status:</b> everything above is built and tested locally. Nothing has been run against real Supabase, Razorpay, Anthropic, Vercel or Render accounts yet. Follow <code>docs/LAUNCH.md</code> and do a test-mode payment and refund first.</div>
+<ul>
+<li><b>Known limits:</b> a page refresh during a test loses the answers; video upload is a single request (a dropped connection restarts it); only the sign-in, header and home screens are translated; exactly four options per question; guardian consent is recorded, not verified.</li>
+<li><b>Next:</b> go live; legal review of the privacy policy and consent method; native review of Hindi and a Meiteilon translation; resumable uploads and tests; Physics and Chemistry.</li></ul>
+<p class="foot">Full 21-page specification with all user stories and acceptance criteria: docs/spec/BioPrep-Product-Spec.pdf in the repository.</p></body></html>
